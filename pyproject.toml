@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "accpre"
+version = "0.1.0"
+description = "Speculative diffusion decoding — v1"
+requires-python = ">=3.9"
+dependencies = [
+    "torch>=2.0",
+    "transformers>=4.36",
+    "datasets",
+    "einops",
+    "pyyaml",
+    "numpy",
+    "matplotlib",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7.0"]
+
+[tool.setuptools.packages.find]
+include = ["accpre*"]
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: integration tests that load real HuggingFace models (skipped by default).",
+]
+addopts = "-m 'not slow'"
+testpaths = ["tests"]

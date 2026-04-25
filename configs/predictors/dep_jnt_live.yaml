@@ -1,0 +1,53 @@
+# Phase 23 — joint live-target dependence predictor (branch (a)).
+#
+# Parallels `acc_jnt_1a_liveq2*.yaml` but swaps the regression target
+# from live Q2 to live 1-TV dependence s_j. At every step the trainer:
+#   1. Replays the drafter with grad under matched RNG → draft_tokens,
+#      draft_log_probs, drafter_hidden.
+#   2. Builds v2 features + tok-emb input from the REPLAYED tokens
+#      (Phase 23 token-id fix).
+#   3. Recomputes s_j = 1 - TV(Q^prefix_j, Q^revealed_j) from the
+#      CURRENT drafter on the REPLAYED draft_tokens
+#      (`accpre.core.dependence.compute_dependence_target`) — no grad
+#      through the target.
+#   4. MSE loss, survived-masked, on (s_hat, s_live).
+#
+# LR schedule is decoupled from `max_epochs` via the Phase-23 override
+# mechanism so this run stays comparable to future long-run variants.
+# The override values match what max_epochs=10 + warmup_ratio=0.05
+# would produce on this dataset, so dep_jnt_live trains under the same
+# effective schedule as live_jnt_10ep if you later compare them.
+
+run_name: dep_jnt_live
+data_path: data_collected/stage1_pp.pt
+target: dependence
+family: hidden_per_pos_v2
+head_arch: tokemb_mlp
+mode: joint
+
+loss: mse
+live_dep_target: true
+
+gamma: 8
+T: 2
+
+hidden_dim: 128
+dropout: 0.1
+token_emb_dim: 64
+
+batch_size: 16
+head_lr: 1.0e-3
+backbone_lr: 5.0e-5
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 10
+early_stop_patience: 2
+seed: 0
+aux_bce: false
+
+# Phase 23 schedule override — fixes the LR warmup against run length
+# so this run is comparable to any future {5,10,20}-epoch variant.
+# 5.9k-ish train records at batch_size=16 → ~370 batches/epoch ×
+# 10 epochs = ~3700 total_steps; warmup = 5% = 185 steps.
+total_steps_override: 3700
+warmup_steps_override: 185

@@ -1,0 +1,26 @@
+# Phase 18 — minimal token-slot drafter alignment.
+#
+# Drafter-only training; no acceptance head in the loop. Loss is a
+# survived-masked MSE on (log q_j - log p_j) for the STORED drafted
+# token at each position j. Verifier loaded in bf16 (eval, no grad).
+#
+# This is a probe, not a tuned recipe. Minimal knobs; same conservative
+# backbone_lr as Phase 16.
+
+run_name: drafter_align_tokslot
+data_path: data_collected/stage1_pp.pt
+mode: drafter_align
+loss: log_q_log_p_mse
+family: hidden_per_pos_v2      # dataset compatibility only
+
+gamma: 8
+T: 2
+
+batch_size: 16
+backbone_lr: 5.0e-5
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 3
+early_stop_patience: 2
+grad_clip_norm: 1.0
+seed: 0

@@ -1,0 +1,26 @@
+# Frozen v1 Protocol Configuration.
+#
+# These values pin the semantics of q_j, accepted_j, L, CF@1, and every
+# logged artifact. Changing any field here is equivalent to changing the
+# protocol; a fresh record collection is required.
+#
+# The matched-randomness discipline (DESIGN.md §D.5.2) derives every
+# per-round random stream from `round_rng_seed`, which is itself derived
+# from `SHA-256(fingerprint(this) | prompt_idx | round_idx)`. The salts
+# below ensure draft / accept / fallback streams are independent even
+# though they share the same per-round seed.
+
+schema_version: 1
+temperature: 1.0          # v1 main protocol; temp=0 used only in unit tests
+q_mode: "A"                # frozen for v1; "B" reserved as future ablation
+
+drafter_model: "kuleshov-group/mdlm-owt"
+verifier_model: "gpt2-xl"
+dtype: "float32"
+
+max_verifier_ctx: 1024
+
+# RNG stream salts (do not change without bumping schema_version).
+draft_salt:    0xD1EC0DE
+accept_salt:   0xACCE71
+fallback_salt: 0xFA11BAC

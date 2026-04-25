@@ -1,0 +1,27 @@
+# Phase 25 — greedy / temperature=0 protocol.
+#
+# Same as configs/protocol.yaml except `temperature: 0.0`, which switches
+# the accept test in `per_position_accept` from the Bernoulli
+# `u_j < p_j / q_j` to `argmax(target_log_probs[pos]) == draft_tokens[j]`
+# (Leviathan greedy regime). The drafter's final DDPM step becomes
+# argmax too; intermediate DDPM steps stay stochastic (required — see
+# drafter_mdlm.py).
+#
+# IMPORTANT: this protocol fingerprint differs from the temp=1.0
+# mainline, so RNG streams are NOT comparable across fingerprints. Use
+# this file only for the Phase 25 greedy sweep; do not mix with
+# Phase 22/23/24 records.
+
+schema_version: 1
+temperature: 0.0          # <-- the only delta vs configs/protocol.yaml
+q_mode: "A"
+
+drafter_model: "kuleshov-group/mdlm-owt"
+verifier_model: "gpt2-xl"
+dtype: "float32"
+
+max_verifier_ctx: 1024
+
+draft_salt:    0xD1EC0DE
+accept_salt:   0xACCE71
+fallback_salt: 0xFA11BAC

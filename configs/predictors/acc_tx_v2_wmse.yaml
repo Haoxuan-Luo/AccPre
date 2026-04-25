@@ -1,0 +1,42 @@
+# Acceptance improvement pass — weighted MSE variant of A2 (post-LN-fix).
+#
+# Same architecture and features as acc_tx_v2 (V-free, hidden_per_pos_v2):
+#   - drafter hidden + 5 local scalars per position
+#   - per-position transformer encoder (d_model=128, 2 layers, 4 heads)
+#
+# Only change: loss = weighted_mse with q_weight_lambda=0.5, i.e.
+#   L = mean_j survived_j * (1 + 0.5 * Q2_j) * (Q_hat_j - Q2_j)^2
+#
+# Rationale: under commit_threshold at τ ≥ 0.5 only positions with high
+# predicted Q̂ contribute to the committed prefix, so mild upweighting
+# of high-Q targets during training biases the regressor toward better
+# discrimination at the relevant decision boundary. lambda=0.5 keeps
+# the per-example weight range in [1.0, 1.5] — mild, not extreme.
+
+run_name: acc_tx_v2_wmse
+data_path: data_collected/stage1_pp.pt
+target: acceptance
+family: hidden_per_pos_v2
+head_arch: tx
+mode: frozen
+
+loss: weighted_mse
+q_weight_lambda: 0.5
+
+gamma: 8
+
+d_model: 128
+num_layers: 2
+num_heads: 4
+dropout: 0.1
+
+hidden_dim: 128
+
+batch_size: 128
+head_lr: 1.0e-3
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 10
+early_stop_patience: 2
+seed: 0
+aux_bce: false

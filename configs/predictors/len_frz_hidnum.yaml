@@ -1,0 +1,19 @@
+# Stage 2A.2 — frozen τ-conditioned committed-length predictor,
+# drafter-hidden + numeric features. Main-lane cheap predictor (V-prefix).
+
+run_name: len_frz_hidnum
+data_path: data_collected/stage1.pt
+target: committed_length
+family: hidden_numeric
+mode: frozen
+gamma: 8
+hidden_dim: 128
+dropout: 0.1
+batch_size: 128
+head_lr: 1.0e-3
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 10
+early_stop_patience: 2
+seed: 0
+tau_grid: [0.1, 0.3, 0.5, 0.7, 0.9]

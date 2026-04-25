@@ -1,0 +1,44 @@
+# Phase 16 — joint 1A with LIVE Q2 target (not stored lazy Q2).
+#
+# Same as acc_jnt_1a in every respect except:
+#   live_q2_target: true   — compute Q2_j = min(1, p/q) per step from
+#                           the current drafter's q and a live verifier
+#                           forward on the replayed draft_tokens.
+#   batch_size: 16         — halved from 32 to leave headroom for the
+#                           verifier forward (GPT-2-XL in fp32 on the
+#                           1g.10gb MIG slice).
+#
+# Everything else identical: same head arch (AcceptanceMLPPerPosTokEmb),
+# same feature family, same MSE loss, same backbone_lr, same early-stop,
+# same full-prefix reconstruction (Phase 15 fix).
+#
+# Evaluation: same as Phase 15 — recollect on fine-tuned drafter + offline
+# CF@1 + online tok/s. Comparison baselines: frozen acc_1a, lazy-target
+# acc_jnt_1a, oracle-Q2 ceiling.
+
+run_name: acc_jnt_1a_liveq2
+data_path: data_collected/stage1_pp.pt
+target: acceptance
+family: hidden_per_pos_v2
+head_arch: tokemb_mlp
+mode: joint
+
+loss: mse
+live_q2_target: true     # Phase 16 delta
+
+gamma: 8
+T: 2
+
+hidden_dim: 128
+dropout: 0.1
+token_emb_dim: 64
+
+batch_size: 16           # halved from 32 for verifier memory headroom
+head_lr: 1.0e-3
+backbone_lr: 5.0e-5
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 5
+early_stop_patience: 2
+seed: 0
+aux_bce: false

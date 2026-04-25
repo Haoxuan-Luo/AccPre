@@ -1,0 +1,29 @@
+# Stage 2B.1 — joint single-task acceptance predictor, drafter-hidden-only.
+# V-free deployment (zero verifier calls at inference).
+#
+# Joint mode: MDLM backbone + AcceptanceMLP head trained together.
+# Gradients flow only through the final DDPM step into drafter_hidden.
+# Target: stored Stage-1 Q2 (lazy). Loss: soft-BCE (the variant that
+# widened Q̂ range for this family in Stage 2A).
+
+run_name: acc_jnt_hid
+data_path: data_collected/stage1.pt
+target: acceptance
+family: hidden
+mode: joint
+loss: soft_bce
+
+gamma: 8
+T: 2
+hidden_dim: 128
+dropout: 0.1
+
+batch_size: 16         # joint forwards grad-accumulate per item; small batch
+head_lr: 1.0e-3
+backbone_lr: 5.0e-5    # standard transformer fine-tune
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 3          # joint training is slow; start short
+early_stop_patience: 1
+seed: 0
+aux_bce: false

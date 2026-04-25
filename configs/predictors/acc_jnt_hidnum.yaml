@@ -1,0 +1,24 @@
+# Stage 2B.1 — joint single-task acceptance predictor,
+# drafter-hidden + numeric. V-prefix deployment.
+
+run_name: acc_jnt_hidnum
+data_path: data_collected/stage1.pt
+target: acceptance
+family: hidden_numeric
+mode: joint
+loss: soft_bce
+
+gamma: 8
+T: 2
+hidden_dim: 128
+dropout: 0.1
+
+batch_size: 16
+head_lr: 1.0e-3
+backbone_lr: 5.0e-5
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 3
+early_stop_patience: 1
+seed: 0
+aux_bce: false

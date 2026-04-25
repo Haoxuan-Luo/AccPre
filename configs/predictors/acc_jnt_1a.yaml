@@ -1,0 +1,44 @@
+# Phase 15 — joint (drafter + head) fine-tune with the 1A-style head.
+#
+# First post-audit joint experiment. Small, conservative run. No V-prefix,
+# no length head, no broad sweep. Evaluated post-hoc via
+# `recollect_strict_with_drafter` + offline CF@1 + online decode.
+#
+# Prerequisites (enforced by code):
+#   - JointAcceptanceDataset reconstructs the FULL prefix per round from
+#     sibling records (not `prefix_tail`).
+#   - load_config accepts hidden_per_pos_v2 + tokemb_mlp in joint mode.
+#   - _forward_item / _save_joint_predictions route token_ids +
+#     refreshed-drafter v2 scalars to AcceptanceMLPPerPosTokEmb.
+#
+# Lazy-target caveat: Q2_target = record.min_pq_j is frozen at Stage-1
+# values; the drafter's q drifts as it fine-tunes. Documented and
+# intentional for this first experiment — evaluation happens on
+# RECOLLECTED records whose min_pq_j is computed under the fine-tuned
+# drafter, so the published CF@1 is not confounded by the lazy target.
+
+run_name: acc_jnt_1a
+data_path: data_collected/stage1_pp.pt
+target: acceptance
+family: hidden_per_pos_v2
+head_arch: tokemb_mlp
+mode: joint
+
+loss: mse
+
+gamma: 8
+T: 2
+
+hidden_dim: 128
+dropout: 0.1
+token_emb_dim: 64
+
+batch_size: 32
+head_lr: 1.0e-3
+backbone_lr: 5.0e-5
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 5
+early_stop_patience: 2
+seed: 0
+aux_bce: false

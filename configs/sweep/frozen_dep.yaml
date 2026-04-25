@@ -1,0 +1,34 @@
+# Base config for the `frozen_dep` sweep family.
+#
+# Family target: 1-TV dependence  s_j = 1 - TV(Q^prefix_j, Q^revealed_j).
+# Mode:          frozen (requires a precomputed dep-targets file).
+# Architecture: hidden_per_pos_v2 features + tokemb_mlp head.
+#
+# dep_targets_path and data_path are both overridden by the sweep driver
+# based on --dataset.
+
+run_name: sweep_frozen_dep
+target: dependence
+family: hidden_per_pos_v2
+head_arch: tokemb_mlp
+mode: frozen
+
+loss: mse
+
+gamma: 8
+
+hidden_dim: 128
+dropout: 0.1
+token_emb_dim: 64
+
+batch_size: 128
+head_lr: 1.0e-3
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 10
+early_stop_patience: 2
+seed: 0
+aux_bce: false
+
+data_path: data_collected/stage1_pp.pt
+dep_targets_path: data_collected/stage1_pp_dep.pt

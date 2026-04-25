@@ -1,0 +1,24 @@
+# Default hyperparameter grid for predictor sweeps.
+#
+# Cartesian product of lr × epochs × batch_size × seed. `null` for an
+# axis means "use the family base-config default". Each trained
+# checkpoint is then evaluated at EVERY threshold in `eval.taus` —
+# sweep_train_eval.py writes one summary.json per (training, tau) pair.
+#
+# These defaults match the 2026-04 OWT gamma=15 / three-tau sweep
+# protocol. Override on the command line or by editing this file.
+
+lr:          [1.0e-5, 1.0e-4, 3.0e-4, 5.0e-4, 1.0e-3]
+epochs:      [3, 5, 10]
+batch_size:  [null]
+seed:        [0]
+
+eval:
+  n_prompts:       10
+  max_new_tokens:  1024
+  gamma:           15
+  T:               2
+  taus:            [0.5, 0.7, 0.9]
+  rule:            threshold
+
+decouple_schedule: true

@@ -1,0 +1,46 @@
+# Acceptance improvement pass 2 — threshold-aware auxiliary on A2.
+#
+# Same architecture and features as acc_tx_v2 (V-free, hidden_per_pos_v2):
+#   - drafter hidden + 5 local scalars per position
+#   - per-position transformer encoder (d_model=128, 2 layers, 4 heads)
+#
+# Main loss: plain MSE on Q2 (same as acc_tx_v2).
+# Aux loss: per-τ soft-indicator BCE on `1[Q2_target ≥ τ]` with
+#   p_{j,τ} = σ( sharpness · (Q̂_j − τ) ). Aggregated across
+#   τ ∈ {0.5, 0.7, 0.9} and averaged. Scaled by `threshold_aux_weight`.
+#
+# Weight chosen small (0.2) so the aux does not dominate the MSE term
+# (MSE is ~0.15 at convergence; 3-τ averaged BCE is O(0.5) near start,
+# so 0.2 * 0.5 = 0.1 at start, comparable to but below MSE).
+
+run_name: acc_tx_v2_thresh
+data_path: data_collected/stage1_pp.pt
+target: acceptance
+family: hidden_per_pos_v2
+head_arch: tx
+mode: frozen
+
+loss: mse
+
+# Threshold-aware auxiliary (weak).
+threshold_aux_weight: 0.2
+threshold_aux_taus: [0.5, 0.7, 0.9]
+threshold_aux_sharpness: 10.0
+
+gamma: 8
+
+d_model: 128
+num_layers: 2
+num_heads: 4
+dropout: 0.1
+
+hidden_dim: 128
+
+batch_size: 128
+head_lr: 1.0e-3
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 10
+early_stop_patience: 2
+seed: 0
+aux_bce: false

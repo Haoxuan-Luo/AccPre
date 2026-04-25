@@ -1,0 +1,34 @@
+# Phase 14 — direct threshold classifier.
+#
+# Same 1A body (AcceptanceMLPPerPosTokEmb) with the final Linear's
+# output dimension replaced by K = len(TAU_GRID) = 3 sigmoid heads, one
+# per τ ∈ {0.5, 0.7, 0.9}. Per-head BCE on 1[Q2_j >= τ_k], survived-masked,
+# averaged over heads. No calibration, no weighted MSE, no Q2 regression.
+# Deploy: predict_L routes the caller's τ to the matching head and applies
+# commit_threshold(scores, 0.5).
+
+run_name: acc_thresh
+data_path: data_collected/stage1_pp.pt
+target: acceptance
+family: hidden_per_pos_v2
+head_arch: thresh_multihead
+mode: frozen
+
+loss: multi_thresh_bce
+
+gamma: 8
+
+hidden_dim: 128
+dropout: 0.1
+
+# same as 1A
+token_emb_dim: 64
+
+batch_size: 128
+head_lr: 1.0e-3
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 10
+early_stop_patience: 2
+seed: 0
+aux_bce: false

@@ -1,0 +1,20 @@
+# Phase 4 Stage A — pp_wide: wider + deeper shared MLP + learned position embedding.
+
+run_name: acc_frz_pp_wide
+data_path: data_collected/stage1_pp.pt
+target: acceptance
+family: hidden_per_pos
+head_arch: wide
+mode: frozen
+loss: mse
+gamma: 8
+hidden_dim: 256          # wider trunk
+dropout: 0.1
+batch_size: 128
+head_lr: 1.0e-3
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 10
+early_stop_patience: 2
+seed: 0
+aux_bce: false

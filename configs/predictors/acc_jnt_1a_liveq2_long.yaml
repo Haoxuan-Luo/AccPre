@@ -1,0 +1,37 @@
+# Phase 17 — longer live-Q2 joint training ("did we stop too early?").
+#
+# Identical to acc_jnt_1a_liveq2 except max_epochs = 10 (was 5).
+# Same seed, same learning rates, same everything else. Early stopping
+# is still enabled (patience 2), so if val plateaus or regresses we
+# stop naturally; if val keeps improving past epoch 5 we'll see it.
+#
+# This is NOT a sweep. One knob moved. If results don't clearly
+# improve on the 5-epoch run, we know 5 was enough for this exact
+# formulation.
+
+run_name: acc_jnt_1a_liveq2_long
+data_path: data_collected/stage1_pp.pt
+target: acceptance
+family: hidden_per_pos_v2
+head_arch: tokemb_mlp
+mode: joint
+
+loss: mse
+live_q2_target: true
+
+gamma: 8
+T: 2
+
+hidden_dim: 128
+dropout: 0.1
+token_emb_dim: 64
+
+batch_size: 16
+head_lr: 1.0e-3
+backbone_lr: 5.0e-5
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 10           # ← only delta vs Phase 16
+early_stop_patience: 2
+seed: 0
+aux_bce: false

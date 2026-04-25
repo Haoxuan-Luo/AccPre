@@ -1,0 +1,30 @@
+# Phase 18 — frozen 1A retrained on records recollected under the
+# aligned drafter.
+#
+# Identical to acc_1a except `data_path` points to the aligned
+# recollection produced by `scripts/recollect_all.py`. Standard frozen
+# training path (`_train_frozen_acceptance`/main); no drafter in the
+# loop here.
+
+run_name: acc_1a_aligned
+data_path: data_collected/stage1_pp_aligned.pt
+target: acceptance
+family: hidden_per_pos_v2
+head_arch: tokemb_mlp
+mode: frozen
+
+loss: mse
+
+gamma: 8
+hidden_dim: 128
+dropout: 0.1
+token_emb_dim: 64
+
+batch_size: 128
+head_lr: 1.0e-3
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 10
+early_stop_patience: 2
+seed: 0
+aux_bce: false

@@ -1,0 +1,43 @@
+# Phase 23 — frozen dependence predictor (branch (a)).
+#
+# Same 1A architecture as `acc_1a.yaml` (hidden_per_pos_v2 backbone +
+# token-embedding MLP head), same MSE loss, same hyperparameters. The
+# only change is the regression target: instead of Q2_j = min(1, p/q),
+# we regress s_j = 1 - TV(Q^prefix_j, Q^revealed_j) ∈ [0, 1] — the
+# full-row 1-TV dependence target defined in
+# `accpre/core/dependence.py`.
+#
+# The target is precomputed offline on the PRETRAINED MDLM drafter by
+# `scripts/collect_dep_targets.py` and stored at `dep_targets_path`.
+#
+# Inference and commit rule are unchanged — the head emits s_hat in
+# [0, 1]^γ and `commit_threshold(s_hat, τ)` picks the longest prefix
+# with s_hat >= τ. Same {0.5, 0.7, 0.9} τ grid as the 1A line.
+
+run_name: dep_frz_1a
+data_path: data_collected/stage1_pp.pt
+target: dependence
+family: hidden_per_pos_v2
+head_arch: tokemb_mlp
+mode: frozen
+
+loss: mse
+
+gamma: 8
+
+hidden_dim: 128
+dropout: 0.1
+token_emb_dim: 64
+
+batch_size: 128
+head_lr: 1.0e-3
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 10
+early_stop_patience: 2
+seed: 0
+aux_bce: false
+
+# Required: path to the precomputed dependence-target file, produced by
+# `scripts/collect_dep_targets.py` on the pretrained drafter.
+dep_targets_path: data_collected/stage1_pp_dep.pt

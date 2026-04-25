@@ -1,0 +1,38 @@
+# Base config for the `joint_dep` sweep family.
+#
+# Family target: live 1-TV dependence s_j recomputed per step from the
+#                CURRENT drafter on the REPLAYED draft tokens (no
+#                precomputed dep-targets file needed).
+# Mode:          joint.
+# Architecture: hidden_per_pos_v2 features + tokemb_mlp head.
+#
+# The sweep driver overrides run_name / head_lr / backbone_lr /
+# max_epochs / batch_size / seed / data_path / schedule overrides.
+
+run_name: sweep_joint_dep
+target: dependence
+family: hidden_per_pos_v2
+head_arch: tokemb_mlp
+mode: joint
+
+loss: mse
+live_dep_target: true
+
+gamma: 8
+T: 2
+
+hidden_dim: 128
+dropout: 0.1
+token_emb_dim: 64
+
+batch_size: 16
+head_lr: 1.0e-3
+backbone_lr: 5.0e-5
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 10
+early_stop_patience: 2
+seed: 0
+aux_bce: false
+
+data_path: data_collected/stage1_pp.pt

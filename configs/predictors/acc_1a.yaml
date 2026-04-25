@@ -1,0 +1,39 @@
+# Phase 12 — branch 1A: richer per-position drafter-side features with the
+# per-position MLP head (no cross-position interaction).
+#
+# Base features: hidden_per_pos_v2 float block (drafter hidden + 5 scalars).
+# New signal:    per-position drafted-token identity, embedded through a
+#                learned nn.Embedding(50258, 64) inside the predictor.
+#
+# Head: AcceptanceMLPPerPosTokEmb — shared-weight position-wise MLP
+#       (LN → Linear → ReLU → Dropout → Linear → ReLU → Dropout → Linear → σ).
+#       NO cross-position interaction. Per-position independence is the
+#       deliberate control vs branch 1B.
+#
+# V-free. Main loss is plain MSE on Q2 (trusted baseline loss).
+
+run_name: acc_1a
+data_path: data_collected/stage1_pp.pt
+target: acceptance
+family: hidden_per_pos_v2
+head_arch: tokemb_mlp
+mode: frozen
+
+loss: mse
+
+gamma: 8
+
+hidden_dim: 128
+dropout: 0.1
+
+# token-embedding size (modest; 64 ≪ 768 drafter-hidden)
+token_emb_dim: 64
+
+batch_size: 128
+head_lr: 1.0e-3
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 10
+early_stop_patience: 2
+seed: 0
+aux_bce: false

@@ -1,0 +1,31 @@
+# Phase 9 A1 — per-position transformer acceptance predictor.
+# Feature: drafter hidden only (γ, H=768). V-free.
+
+run_name: acc_tx_v1
+data_path: data_collected/stage1_pp.pt
+target: acceptance
+family: hidden_per_pos_v1
+head_arch: tx
+mode: frozen
+loss: mse
+
+gamma: 8
+
+# transformer encoder hyperparameters (fixed across A1..A4 / L1..L4)
+d_model: 128
+num_layers: 2
+num_heads: 4
+dropout: 0.1
+
+# kept for config schema (ignored by the tx head)
+hidden_dim: 128
+
+# training
+batch_size: 128
+head_lr: 1.0e-3
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 10
+early_stop_patience: 2
+seed: 0
+aux_bce: false

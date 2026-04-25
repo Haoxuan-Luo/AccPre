@@ -1,0 +1,40 @@
+# Base config for the `joint_alpha` sweep family.
+#
+# Family target: acceptance with LIVE Q2 recomputation.
+# Mode:          joint (drafter weights fine-tuned alongside the head).
+# Architecture: hidden_per_pos_v2 features + tokemb_mlp head (1A line).
+#
+# Live Q2 is recomputed each step from the current drafter + verifier on
+# the REPLAYED draft tokens, and token-emb inputs track the replayed
+# tokens (Phase 23 fix).
+#
+# The sweep driver overrides run_name / head_lr / backbone_lr /
+# max_epochs / batch_size / seed / data_path / schedule overrides.
+
+run_name: sweep_joint_alpha
+target: acceptance
+family: hidden_per_pos_v2
+head_arch: tokemb_mlp
+mode: joint
+
+loss: mse
+live_q2_target: true
+
+gamma: 8
+T: 2
+
+hidden_dim: 128
+dropout: 0.1
+token_emb_dim: 64
+
+batch_size: 16
+head_lr: 1.0e-3
+backbone_lr: 5.0e-5
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 10
+early_stop_patience: 2
+seed: 0
+aux_bce: false
+
+data_path: data_collected/stage1_pp.pt

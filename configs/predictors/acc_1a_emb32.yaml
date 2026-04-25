@@ -1,0 +1,28 @@
+# Phase 13 — 1A ablation (variant B): halve the token-embedding dim (64 → 32).
+# Everything else identical to acc_1a.yaml. Sanity check on whether the
+# current tok-emb dim is already enough.
+
+run_name: acc_1a_emb32
+data_path: data_collected/stage1_pp.pt
+target: acceptance
+family: hidden_per_pos_v2
+head_arch: tokemb_mlp
+mode: frozen
+
+loss: mse
+
+gamma: 8
+
+hidden_dim: 128
+dropout: 0.1
+
+token_emb_dim: 32          # (1A uses 64)
+
+batch_size: 128
+head_lr: 1.0e-3
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 10
+early_stop_patience: 2
+seed: 0
+aux_bce: false

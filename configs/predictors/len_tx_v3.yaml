@@ -1,0 +1,30 @@
+# Phase 9 L3 — per-position transformer committed-length predictor.
+# Feature: drafter hidden + 3 verifier-prefix numeric scalars broadcast.
+# V-prefix.
+
+run_name: len_tx_v3
+data_path: data_collected/stage1_pp.pt
+target: committed_length
+family: hidden_per_pos_v3
+head_arch: tx
+mode: frozen
+loss: weighted_ce
+
+gamma: 8
+
+d_model: 128
+num_layers: 2
+num_heads: 4
+dropout: 0.1
+
+hidden_dim: 128
+
+batch_size: 128
+head_lr: 1.0e-3
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 10
+early_stop_patience: 2
+seed: 0
+
+tau_grid: [0.1, 0.3, 0.5, 0.7, 0.9]

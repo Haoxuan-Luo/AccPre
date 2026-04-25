@@ -1,0 +1,20 @@
+# Stage 2A.1 — frozen acceptance predictor, numeric-only features,
+# soft-BCE loss (fix for Q̂ range compression under MSE; see debug report §1).
+
+run_name: acc_frz_num_sbce
+data_path: data_collected/stage1.pt
+target: acceptance
+family: numeric
+mode: frozen
+loss: soft_bce
+gamma: 8
+hidden_dim: 128
+dropout: 0.1
+batch_size: 128
+head_lr: 1.0e-3
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 10
+early_stop_patience: 2
+seed: 0
+aux_bce: false

@@ -1,0 +1,45 @@
+# Phase 12 — branch 1B: same richer per-position inputs as 1A, but with a
+# small per-position transformer head that adds light cross-position
+# interaction.
+#
+# Base features: hidden_per_pos_v2 float block (drafter hidden + 5 scalars).
+# New signal:    per-position drafted-token identity, embedded through a
+#                learned nn.Embedding(50258, 64) inside the predictor.
+#
+# Head: AcceptanceTxTokEmb — PerPositionTransformerEncoder (input LN +
+#       Linear + pos_emb + 2 pre-norm transformer layers, d=128, 4 heads,
+#       dropout 0.1) + Linear(d, 1) + σ. Same encoder hyperparameters as
+#       A2_base; the only delta vs 1A is that positions can attend to
+#       each other.
+#
+# V-free. Main loss is plain MSE on Q2.
+
+run_name: acc_1b
+data_path: data_collected/stage1_pp.pt
+target: acceptance
+family: hidden_per_pos_v2
+head_arch: tokemb_tx
+mode: frozen
+
+loss: mse
+
+gamma: 8
+
+d_model: 128
+num_layers: 2
+num_heads: 4
+dropout: 0.1
+
+# kept so the config schema matches other acc configs (ignored by tx head)
+hidden_dim: 128
+
+token_emb_dim: 64
+
+batch_size: 128
+head_lr: 1.0e-3
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 10
+early_stop_patience: 2
+seed: 0
+aux_bce: false

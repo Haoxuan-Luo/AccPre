@@ -1,0 +1,27 @@
+# Phase 6 — per-position concat of last-2 transformer-block hidden states.
+# V-free, acceptance-only. Main candidate.
+#
+# Feature: (γ, 2H) per record — penultimate ⊕ final drafter block outputs
+# at the γ draft positions, extracted from the FINAL DDPM step's single
+# forward (no extra drafter cost, no protocol change).
+# Head: AcceptanceMLPPerPos (same as pp_base); in_dim doubles automatically
+# via feature_dim("hidden_per_pos_ml").
+
+run_name: acc_frz_pp_ml
+data_path: data_collected/stage1_pp_ml.pt
+target: acceptance
+family: hidden_per_pos_ml
+head_arch: base
+mode: frozen
+loss: mse
+gamma: 8
+hidden_dim: 128
+dropout: 0.1
+batch_size: 128
+head_lr: 1.0e-3
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 10
+early_stop_patience: 2
+seed: 0
+aux_bce: false

@@ -1,0 +1,30 @@
+# Phase 9 A2 — per-position transformer acceptance predictor.
+# Feature: drafter hidden + 5 local scalars per position
+#          [q_j, log q_j, drafter_entropy_j, drafter_margin_j, drafter_top1_prob_j].
+# Shape: (γ, H+5) = (γ, 773). V-free.
+
+run_name: acc_tx_v2
+data_path: data_collected/stage1_pp.pt
+target: acceptance
+family: hidden_per_pos_v2
+head_arch: tx
+mode: frozen
+loss: mse
+
+gamma: 8
+
+d_model: 128
+num_layers: 2
+num_heads: 4
+dropout: 0.1
+
+hidden_dim: 128
+
+batch_size: 128
+head_lr: 1.0e-3
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 10
+early_stop_patience: 2
+seed: 0
+aux_bce: false

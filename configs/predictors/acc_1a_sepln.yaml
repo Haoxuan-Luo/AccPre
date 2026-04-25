@@ -1,0 +1,33 @@
+# Phase 13 — 1A ablation (variant C): separate-LN fusion style.
+#
+# Variant A (current 1A):
+#   concat([feats, emb], -1) → LayerNorm(in_dim) → Linear → ... → σ
+# Variant C (this config):
+#   concat([ LN_f(feats), LN_e(emb) ], -1) → Linear → ... → σ
+#
+# Everything else identical to acc_1a.yaml. Same token_emb_dim=64.
+
+run_name: acc_1a_sepln
+data_path: data_collected/stage1_pp.pt
+target: acceptance
+family: hidden_per_pos_v2
+head_arch: tokemb_mlp_sepln
+mode: frozen
+
+loss: mse
+
+gamma: 8
+
+hidden_dim: 128
+dropout: 0.1
+
+token_emb_dim: 64
+
+batch_size: 128
+head_lr: 1.0e-3
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 10
+early_stop_patience: 2
+seed: 0
+aux_bce: false

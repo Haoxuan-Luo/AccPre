@@ -1,0 +1,34 @@
+# Phase 19 Vlite-H — 1A + projected verifier-hidden prefix feature.
+#
+# Feature family: hidden_per_pos_v4 (drafter hidden + 5 scalars + 1600-d
+# verifier-hidden-at-last-prefix-token broadcast) PLUS the 1A token
+# embedding. A learned Linear(1600, vh_proj_dim=64) projects the
+# verifier hidden once per record before per-position concatenation
+# with drafter features. One verifier prefix forward per round at
+# inference (V-prefix deploy mode).
+#
+# Hyperparameters are overridden per run by the Phase 19 sweep driver.
+
+run_name: acc_vlite_h
+data_path: data_collected/stage1_pp.pt
+target: acceptance
+family: hidden_per_pos_v4
+head_arch: tokemb_mlp_vhproj
+mode: frozen
+
+loss: mse
+
+gamma: 8
+hidden_dim: 128
+dropout: 0.1
+token_emb_dim: 64
+vh_proj_dim: 64
+
+batch_size: 128
+head_lr: 1.0e-3
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 10
+early_stop_patience: 2
+seed: 0
+aux_bce: false
