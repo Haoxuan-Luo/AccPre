@@ -3,6 +3,7 @@ __pycache__/
 *.pyo
 *.pyd
 .ipynb_checkpoints/
+.pytest_cache/
 
 outputs/
 logs/
@@ -18,6 +19,7 @@ venv/
 *.pth
 *.ckpt
 *.bin
+*.safetensors
 
 checkpoints/
 data_collected/
