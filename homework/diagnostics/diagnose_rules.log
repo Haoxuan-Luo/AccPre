@@ -1,0 +1,50 @@
+[diag] device=cuda temp=0.0 q_mode=A
+[MDLMDrafter] Loading model: kuleshov-group/mdlm-owt
+`torch_dtype` is deprecated! Use `dtype` instead!
+[MDLMDrafter] Loaded. vocab_size=50258 hidden_size=768
+[GPT2Verifier] Loading model: gpt2-xl
+[GPT2Verifier] Loaded. vocab_size=50257
+[Data] Loading OpenWebText (streaming)...
+Token indices sequence length is longer than the specified maximum sequence length for this model (1118 > 1024). Running this sequence through the model will result in indexing errors
+[Data] Loaded 80 prompts (prefix_len=32).
+[diag] 5 OWT test prompts (indices [60, 61, 62, 63, 64])
+/home/ayr7tb/.cache/huggingface/modules/transformers_modules/kuleshov_hyphen_group/mdlm_hyphen_owt/d0958fa851335ece6c15260ce0025f030673c0fb/modeling_mdlm.py:397: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(dtype=torch.bfloat16):
+/home/ayr7tb/.cache/huggingface/modules/transformers_modules/kuleshov_hyphen_group/mdlm_hyphen_owt/d0958fa851335ece6c15260ce0025f030673c0fb/modeling_mdlm.py:147: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/ayr7tb/.cache/huggingface/modules/transformers_modules/kuleshov_hyphen_group/mdlm_hyphen_owt/d0958fa851335ece6c15260ce0025f030673c0fb/modeling_mdlm.py:285: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+
+[diag] 5325 drafted positions across 5 prompts
+[diag] argmax-match positions:     2024 (38.01%)
+[diag] argmax-mismatch positions:  3301 (61.99%)
+
+[diag] q_j (drafter prob of drafted token):
+   mean=0.397  median=0.252
+[diag] p_j (verifier prob of drafted token):
+   mean=0.309  median=0.032
+[diag] ratio = min(1, p/q) on argmax-MATCH positions:
+   mean=0.910  median=1.000
+[diag] ratio on argmax-MISMATCH positions:
+   mean=0.216  median=0.025
+
+[diag] Of the argmax-MATCH positions (which strict ALWAYS accepts at temp=0), how many would the threshold rule REJECT?
+   tau=0.1:      0/ 2024 =  0.00%  → this is the gap that makes ratio-rules slower than strict
+   tau=0.3:     59/ 2024 =  2.92%  → this is the gap that makes ratio-rules slower than strict
+   tau=0.5:    133/ 2024 =  6.57%  → this is the gap that makes ratio-rules slower than strict
+   tau=0.7:    258/ 2024 = 12.75%  → this is the gap that makes ratio-rules slower than strict
+   tau=0.9:    428/ 2024 = 21.15%  → this is the gap that makes ratio-rules slower than strict
+
+[diag] Equivalently, of all positions inside strict's accepted prefix, how many would threshold reject (truncating earlier)?
+   tau=0.1:      0/  944 =  0.00%
+   tau=0.3:     10/  944 =  1.06%
+   tau=0.5:     23/  944 =  2.44%
+   tau=0.7:     75/  944 =  7.94%
+   tau=0.9:    143/  944 = 15.15%
+
+[diag] Lossy-l Bernoulli accept rate on match positions (should equal mean(min(1, p/(l*q)))):
+   l=1.0: mean accept = 0.910  (strict at temp=0 always accepts these = 1.0)
+   l=0.7: mean accept = 0.957  (strict at temp=0 always accepts these = 1.0)
+   l=0.5: mean accept = 0.978  (strict at temp=0 always accepts these = 1.0)
+   l=0.3: mean accept = 0.993  (strict at temp=0 always accepts these = 1.0)
+   l=0.1: mean accept = 1.000  (strict at temp=0 always accepts these = 1.0)

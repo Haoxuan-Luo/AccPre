@@ -1,0 +1,127 @@
+[hw] device=cuda dtype=float32 gamma=15 T=2 max_new=1024
+[MDLMDrafter] Loading model: kuleshov-group/mdlm-owt
+`torch_dtype` is deprecated! Use `dtype` instead!
+[MDLMDrafter] Loaded. vocab_size=50258 hidden_size=768
+[GPT2Verifier] Loading model: gpt2-xl
+[GPT2Verifier] Loaded. vocab_size=50257
+[Data] Loading OpenWebText (streaming)...
+Token indices sequence length is longer than the specified maximum sequence length for this model (1118 > 1024). Running this sequence through the model will result in indexing errors
+[Data] Loaded 80 prompts (prefix_len=32).
+[hw] 20 OWT test prompts, indices 60..79
+
+[hw] === STRICT ===
+[hw]   reusing online_strict.json
+[hw]   strict NLL=0.1070 (offline 10.0s)
+
+[hw] === LOSSY l=1.0 ===
+[hw]   reusing online_lossy_l_1.json
+[hw]   lossy l=1.0 NLL=0.3772 (offline 8.4s)
+
+[hw] === LOSSY l=0.7 ===
+[hw]   reusing online_lossy_l_0p7.json
+[hw]   lossy l=0.7 NLL=0.4698 (offline 8.4s)
+
+[hw] === LOSSY l=0.5 ===
+[hw]   reusing online_lossy_l_0p5.json
+[hw]   lossy l=0.5 NLL=0.5480 (offline 8.4s)
+
+[hw] === LOSSY l=0.3 ===
+[hw]   reusing online_lossy_l_0p3.json
+[hw]   lossy l=0.3 NLL=0.5618 (offline 8.4s)
+
+[hw] === LOSSY l=0.1 ===
+[hw]   reusing online_lossy_l_0p1.json
+[hw]   lossy l=0.1 NLL=1.0980 (offline 8.4s)
+
+[hw] === LOSSY l=2.0 ===
+/home/ayr7tb/.cache/huggingface/modules/transformers_modules/kuleshov_hyphen_group/mdlm_hyphen_owt/d0958fa851335ece6c15260ce0025f030673c0fb/modeling_mdlm.py:397: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(dtype=torch.bfloat16):
+/home/ayr7tb/.cache/huggingface/modules/transformers_modules/kuleshov_hyphen_group/mdlm_hyphen_owt/d0958fa851335ece6c15260ce0025f030673c0fb/modeling_mdlm.py:147: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/home/ayr7tb/.cache/huggingface/modules/transformers_modules/kuleshov_hyphen_group/mdlm_hyphen_owt/d0958fa851335ece6c15260ce0025f030673c0fb/modeling_mdlm.py:285: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+[hw]   wrote online_lossy_l_2.json (decode 2899.3s)
+[hw]   lossy l=2.0 NLL=0.1911 (offline 8.4s)
+
+[hw] === THRESHOLD_LOSSY tau=0.1 ===
+[hw]   reusing online_threshold_lossy_tau_0p1.json
+[hw]   threshold tau=0.1 NLL=0.6385 (offline 8.4s)
+
+[hw] === THRESHOLD_LOSSY tau=0.2 ===
+[hw]   reusing online_threshold_lossy_tau_0p2.json
+[hw]   threshold tau=0.2 NLL=0.5643 (offline 8.4s)
+
+[hw] === THRESHOLD_LOSSY tau=0.3 ===
+[hw]   reusing online_threshold_lossy_tau_0p3.json
+[hw]   threshold tau=0.3 NLL=0.4272 (offline 8.4s)
+
+[hw] === THRESHOLD_LOSSY tau=0.4 ===
+[hw]   reusing online_threshold_lossy_tau_0p4.json
+[hw]   threshold tau=0.4 NLL=0.3464 (offline 8.4s)
+
+[hw] === THRESHOLD_LOSSY tau=0.5 ===
+[hw]   reusing online_threshold_lossy_tau_0p5.json
+[hw]   threshold tau=0.5 NLL=0.2176 (offline 8.4s)
+
+[hw] === THRESHOLD_LOSSY tau=0.6 ===
+[hw]   reusing online_threshold_lossy_tau_0p6.json
+[hw]   threshold tau=0.6 NLL=0.2095 (offline 8.4s)
+
+[hw] === THRESHOLD_LOSSY tau=0.7 ===
+[hw]   reusing online_threshold_lossy_tau_0p7.json
+[hw]   threshold tau=0.7 NLL=0.2580 (offline 8.4s)
+
+[hw] === THRESHOLD_LOSSY tau=0.8 ===
+[hw]   reusing online_threshold_lossy_tau_0p8.json
+[hw]   threshold tau=0.8 NLL=0.2225 (offline 8.4s)
+
+[hw] === THRESHOLD_LOSSY tau=0.9 ===
+[hw]   reusing online_threshold_lossy_tau_0p9.json
+[hw]   threshold tau=0.9 NLL=0.1824 (offline 8.4s)
+
+[hw] === THRESHOLD_LOSSY tau=0.95 ===
+[hw]   wrote online_threshold_lossy_tau_0p95.json (decode 1102.4s)
+[hw]   threshold tau=0.95 NLL=0.1817 (offline 8.4s)
+
+[hw] === CONFIDENCE_LOSSY tau=0.1 ===
+[hw]   reusing online_confidence_lossy_tau_0p1.json
+[hw]   confidence tau=0.1 NLL=0.5598 (offline 8.4s)
+
+[hw] === CONFIDENCE_LOSSY tau=0.2 ===
+[hw]   reusing online_confidence_lossy_tau_0p2.json
+[hw]   confidence tau=0.2 NLL=0.4580 (offline 8.4s)
+
+[hw] === CONFIDENCE_LOSSY tau=0.3 ===
+[hw]   reusing online_confidence_lossy_tau_0p3.json
+[hw]   confidence tau=0.3 NLL=0.3057 (offline 8.4s)
+
+[hw] === CONFIDENCE_LOSSY tau=0.4 ===
+[hw]   reusing online_confidence_lossy_tau_0p4.json
+[hw]   confidence tau=0.4 NLL=0.2648 (offline 8.4s)
+
+[hw] === CONFIDENCE_LOSSY tau=0.5 ===
+[hw]   reusing online_confidence_lossy_tau_0p5.json
+[hw]   confidence tau=0.5 NLL=0.2686 (offline 8.4s)
+
+[hw] === CONFIDENCE_LOSSY tau=0.6 ===
+[hw]   reusing online_confidence_lossy_tau_0p6.json
+[hw]   confidence tau=0.6 NLL=0.2525 (offline 8.4s)
+
+[hw] === CONFIDENCE_LOSSY tau=0.7 ===
+[hw]   reusing online_confidence_lossy_tau_0p7.json
+[hw]   confidence tau=0.7 NLL=0.2549 (offline 8.4s)
+
+[hw] === CONFIDENCE_LOSSY tau=0.8 ===
+[hw]   reusing online_confidence_lossy_tau_0p8.json
+[hw]   confidence tau=0.8 NLL=0.2469 (offline 8.4s)
+
+[hw] === CONFIDENCE_LOSSY tau=0.9 ===
+[hw]   reusing online_confidence_lossy_tau_0p9.json
+[hw]   confidence tau=0.9 NLL=0.1797 (offline 8.4s)
+
+[hw] === CONFIDENCE_LOSSY tau=0.95 ===
+[hw]   wrote online_confidence_lossy_tau_0p95.json (decode 1224.5s)
+[hw]   confidence tau=0.95 NLL=0.1994 (offline 8.4s)
+
+[hw] wrote unified.{json,md} + results.csv -> /sfs/gpfs/tardis/home/ayr7tb/AccPre/homework
+[hw] strict NLL reference: 0.1070

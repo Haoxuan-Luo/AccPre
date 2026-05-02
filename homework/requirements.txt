@@ -1,0 +1,15 @@
+# Coursework experiment dependencies.
+#
+# Models (gpt2-xl, kuleshov-group/mdlm-owt) are downloaded from HuggingFace
+# at runtime; no model weights are stored in this repo.
+#
+# Tested with PyTorch 2.7 and Transformers 4.36+; tighter pins are unlikely
+# to be necessary.
+
+torch>=2.0
+transformers>=4.36
+datasets
+einops
+pyyaml
+numpy
+matplotlib

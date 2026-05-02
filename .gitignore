@@ -21,6 +21,11 @@ venv/
 
 checkpoints/
 data_collected/
+experiments/
 
+# Editor / packaging artifacts
+.idea/
+.vscode/
+*.egg-info/
 
 .claude/

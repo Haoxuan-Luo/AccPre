@@ -1,0 +1,129 @@
+{
+  "dataset": "owt",
+  "split": "test",
+  "n_prompts": 20,
+  "indices": [
+    60,
+    61,
+    62,
+    63,
+    64,
+    65,
+    66,
+    67,
+    68,
+    69,
+    70,
+    71,
+    72,
+    73,
+    74,
+    75,
+    76,
+    77,
+    78,
+    79
+  ],
+  "items": [
+    {
+      "prompt_idx": 60,
+      "prefix_len": 32,
+      "text": "(NaturalHealth365) Gwyneth Paltrow uses her weekly blog to share her insights and tips for a better life. In a recent post the 43"
+    },
+    {
+      "prompt_idx": 61,
+      "prefix_len": 32,
+      "text": "Download.com is an Internet download directory website launched in 1996 as a part of CNET. Originally, the domain was download.com, which became download."
+    },
+    {
+      "prompt_idx": 62,
+      "prefix_len": 32,
+      "text": "Long-time Steelers CB Ike Taylor mentioned Sunday during an interview with Sirius XM NFL Radio. that he would be willing to follow defensive coordinator Dick LeBeau"
+    },
+    {
+      "prompt_idx": 63,
+      "prefix_len": 32,
+      "text": "Merely trying to survive in Los Angeles is enough to drain your pockets (and then some). Luckily, this summer, there's a lot of fun that"
+    },
+    {
+      "prompt_idx": 64,
+      "prefix_len": 32,
+      "text": "GO BIG AND GO HOME! ANIMAL PLANET\u2019S PUPPY BOWL RETURNS FOR ITS 15TH YEAR FEATUR"
+    },
+    {
+      "prompt_idx": 65,
+      "prefix_len": 32,
+      "text": "Columbus residents can vote in August to change City Council to ward-based system Copyright by WCMH - All rights reserved Video\n\nCOLUMBUS ("
+    },
+    {
+      "prompt_idx": 66,
+      "prefix_len": 32,
+      "text": "We farm our Opae Ula in the wild in private ponds in East Hawaii. We sell individual Aquahome communities of at least 20 to hundreds and thousands"
+    },
+    {
+      "prompt_idx": 67,
+      "prefix_len": 32,
+      "text": "GET THE EXCLUSIVE STORY BEHIND DR. ZOMBOSS\u2019S CAPTURE OF SUBURBIA FOR IMMEDIATE RELEASE"
+    },
+    {
+      "prompt_idx": 68,
+      "prefix_len": 32,
+      "text": "Get the biggest daily news stories by email Subscribe Thank you for subscribing We have more newsletters Show me See our privacy notice Could not subscribe, try again later Invalid Email"
+    },
+    {
+      "prompt_idx": 69,
+      "prefix_len": 32,
+      "text": "Prime Minister Kevin Rudd makes surprise visit to troops at Tarin Kot base in Afghanistan\n\nUpdated\n\nPrime Minister Kevin Rudd and his wife Therese Rein have"
+    },
+    {
+      "prompt_idx": 70,
+      "prefix_len": 32,
+      "text": "More than 4 million people now reside in Los Angeles, according to newly released data from a state report.\n\nThe population in Los Angeles grew by 42,"
+    },
+    {
+      "prompt_idx": 71,
+      "prefix_len": 32,
+      "text": "Maryland Gov. Larry Hogan (R) talks about the state budget impasse on the steps of the Maryland State House on the last day of the Maryland General"
+    },
+    {
+      "prompt_idx": 72,
+      "prefix_len": 32,
+      "text": "Officials in the Bush administration systematically broke election laws by using a political office inside the White House for campaign purposes, a federal investigation has found.\n\nIn a"
+    },
+    {
+      "prompt_idx": 73,
+      "prefix_len": 32,
+      "text": "In advance of this year\u2019s Sundance Film Festival , we sent out questionnaires to directors and cinematographers with films in competition at Sundance 2014"
+    },
+    {
+      "prompt_idx": 74,
+      "prefix_len": 32,
+      "text": "But to become like Japan, banning gun sales wouldn't be enough. We'd have to actually confiscate all the guns that Americans now have. This is because"
+    },
+    {
+      "prompt_idx": 75,
+      "prefix_len": 32,
+      "text": "The chief executive of the UK\u2019s largest publisher has warned that the books industry will \u201cbecome irrelevant\u201d if it continues to fail to reflect"
+    },
+    {
+      "prompt_idx": 76,
+      "prefix_len": 32,
+      "text": "TWICE\ufffdhad a giant debut showcase in Japan.\n\nThe girls had their debut showcase in Japan on the 2nd. Originally, the girls had one"
+    },
+    {
+      "prompt_idx": 77,
+      "prefix_len": 32,
+      "text": "LeBron James #23 of the Cleveland Cavaliers celebrates their 95-93 win over the Golden State Warriors in overtime during Game 2 of the 2015 NBA Finals at OR"
+    },
+    {
+      "prompt_idx": 78,
+      "prefix_len": 32,
+      "text": "The Iowa Supreme Court says a Democratic-appointed state official can seek damages from the state over former Republican Gov. Terry Branstad's decision to cut his pay and"
+    },
+    {
+      "prompt_idx": 79,
+      "prefix_len": 32,
+      "text": "The fact that the increasingly social Internet allows \"the conversation\" to spread across comments, Twitter posts, and news aggregators is both a blessing and a curse."
+    }
+  ]
+}
