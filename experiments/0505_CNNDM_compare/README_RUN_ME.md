@@ -13,14 +13,23 @@ cd AccPre
 #    GPT-2 XL (~6 GB) and MDLM-OWT (~880 MB) downloads land where you want.
 export HF_HOME=/path/to/your/hf_cache    # defaults to ~/.cache/huggingface
 
-# 3. Submit the 8-stage pipeline with YOUR Slurm account.
+# 3. (Recommended) Run the preflight first. It checks the registration in
+#    accpre/, the slurm files, container readability, dataset config, and the
+#    cell counts. It does NOT submit any job.
+bash experiments/0505_CNNDM_compare/submit_full_cnndm_300.sh --preflight-only
+
+# 4. Submit the 8-stage pipeline with YOUR Slurm account.
 #    Either:
 SLURM_ACCOUNT=<your-account> bash experiments/0505_CNNDM_compare/submit_full_cnndm_300.sh
 #    Or with a positional argument:
 bash experiments/0505_CNNDM_compare/submit_full_cnndm_300.sh <your-account>
 ```
 
-The submit script prints the 8 job IDs and the dependency graph, plus copy-pasteable `squeue` / `scancel` commands.
+The submit script:
+- prints the git branch and HEAD commit at the start (so you can report exactly what you ran)
+- runs the same preflight as step 3 (it is always executed before any sbatch)
+- if the preflight fails, exits with no jobs submitted
+- if the preflight passes, prints the 8 job IDs and the dependency graph, plus copy-pasteable `squeue` / `scancel` commands.
 
 ### Monitor
 
@@ -142,9 +151,47 @@ A smoke test on a separate 80-prompt CNN/DM file (`stage1_pp_cnn_dm_g15_T1.pt`) 
 
 ## Troubleshooting
 
+### A previous chain failed — what now?
+
+If the chain you submitted earlier has failed jobs (or jobs stuck on `DependencyNeverSatisfied`), the safe recovery is:
+
+```bash
+# 1. List your CNN/DM jobs to find the IDs:
+squeue -u "$USER" --name=cnndm300_collect,cnndm300_targets,cnndm300_baselines,cnndm300_frozen,cnndm300_joint,cnndm300_pickbest,cnndm300_eval,cnndm300_aggregate
+
+# 2. Cancel the entire dead chain (substitute your IDs):
+scancel <JC> <JT> <JB> <JF> <JJ> <JP> <JE> <JA>
+
+# 3. Pull the latest branch to pick up any fixes.
+git pull
+
+# 4. Re-run preflight first; it will tell you what was wrong before any job is submitted.
+bash experiments/0505_CNNDM_compare/submit_full_cnndm_300.sh --preflight-only
+
+# 5. Once preflight passes, re-submit the chain:
+SLURM_ACCOUNT=<your-account> bash experiments/0505_CNNDM_compare/submit_full_cnndm_300.sh
+```
+
+### If `cnndm300_collect` fails quickly (< 1 minute)
+
+The cause is almost always reported in the `.err` log. Capture it and share back:
+
+```bash
+# Substitute the actual collect job ID — it's the one named cnndm300_collect.
+cat experiments/0505_CNNDM_compare/logs/collect_300_<job_id>.err
+cat experiments/0505_CNNDM_compare/logs/collect_300_<job_id>.out
+```
+
+Common root causes:
+- Stale clone (missing `cnn_dm_300` in `accpre/`) — `git pull`, then `--preflight-only` again.
+- Apptainer module name differs on your cluster — `module avail apptainer` to confirm.
+- HF cache not writable — set `HF_HOME` to a scratch / project directory.
+
+### Other failure modes
+
 - **A frozen training shard times out**: re-run only the failed shards via `sbatch --account=<your-account> --array=<bad_indices> jobs/job_train_frozen_cnndm_300.slurm`. The `train_sweep.py` script has skip-on-exists so completed cells are not retrained.
 - **A joint training shard times out** (more common — joint cells are long): use the recovery flow. Build a manifest of incomplete cells; `train_sweep.py --manifest <csv> --move_aside_partial` re-runs only those cells and stashes any stale `model.pt` first.
-- **pick_best blocks on `DependencyNeverSatisfied`**: happens when the chain uses `afterok` and at least one upstream array task failed/timed-out. Manually verify completion (`find experiments/0505_CNNDM_compare/runs/joint -name train_history.json | wc -l`), then re-submit `job_pick_best_cnndm_300.slurm` without dependencies (`sbatch --account=<your-account> jobs/job_pick_best_cnndm_300.slurm`).
+- **`pick_best` blocks on `DependencyNeverSatisfied`**: happens when the chain uses `afterok` and at least one upstream array task failed/timed-out. Manually verify completion (`find experiments/0505_CNNDM_compare/runs/joint -name train_history.json | wc -l`), then re-submit `job_pick_best_cnndm_300.slurm` without dependencies (`sbatch --account=<your-account> jobs/job_pick_best_cnndm_300.slurm`).
 
 ## Reproducibility
 

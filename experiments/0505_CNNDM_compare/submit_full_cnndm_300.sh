@@ -7,9 +7,14 @@
 #     cd <path-to-AccPre>
 #     SLURM_ACCOUNT=<your-account> bash experiments/0505_CNNDM_compare/submit_full_cnndm_300.sh
 #
-# OR equivalently with a positional argument:
+# OR with a positional argument:
 #
 #     bash experiments/0505_CNNDM_compare/submit_full_cnndm_300.sh <your-account>
+#
+# Preflight-only (runs every check below but submits no jobs; useful for
+# verifying a fresh clone before burning queue time):
+#
+#     bash experiments/0505_CNNDM_compare/submit_full_cnndm_300.sh --preflight-only
 #
 # The slurm files themselves do NOT carry an `#SBATCH -A` directive; the
 # account is supplied here via `-A "$SLURM_ACCOUNT"` so the collaborator
@@ -29,16 +34,31 @@
 set -euo pipefail
 
 # -----------------------------------------------------------------------------
-# Resolve Slurm account (required).
+# Parse args. --preflight-only is a flag; everything else is treated as the
+# Slurm account if not already set via $SLURM_ACCOUNT.
 # -----------------------------------------------------------------------------
-SLURM_ACCOUNT="${SLURM_ACCOUNT:-${1:-}}"
-if [ -z "$SLURM_ACCOUNT" ]; then
+PREFLIGHT_ONLY=0
+POSITIONAL_ACCOUNT=""
+for arg in "$@"; do
+    case "$arg" in
+        --preflight-only) PREFLIGHT_ONLY=1 ;;
+        --*) echo "FATAL: unknown flag: $arg" 1>&2; exit 1 ;;
+        *) POSITIONAL_ACCOUNT="$arg" ;;
+    esac
+done
+SLURM_ACCOUNT="${SLURM_ACCOUNT:-$POSITIONAL_ACCOUNT}"
+
+# Account is REQUIRED for actual submission; preflight-only mode tolerates its absence.
+if [ "$PREFLIGHT_ONLY" -eq 0 ] && [ -z "$SLURM_ACCOUNT" ]; then
     cat <<EOF 1>&2
 FATAL: no Slurm account provided.
 Set the SLURM_ACCOUNT environment variable, e.g.:
     SLURM_ACCOUNT=<your-account> bash $0
 or pass it as the first positional argument:
     bash $0 <your-account>
+
+To run preflight only (no jobs submitted, account not required):
+    bash $0 --preflight-only
 EOF
     exit 1
 fi
@@ -61,11 +81,65 @@ cd "$REPO_ROOT"
 # data_collected/ is gitignored; create it if a fresh clone hasn't.
 mkdir -p data_collected
 
-JOBS=experiments/0505_CNNDM_compare/jobs
+# -----------------------------------------------------------------------------
+# Identify the checkout (helps the collaborator report exactly what they ran).
+# -----------------------------------------------------------------------------
+echo "=== CNN/DM 300 submit ==="
+echo "    repo root: $REPO_ROOT"
+if command -v git >/dev/null && [ -d .git ]; then
+    BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "?")
+    COMMIT=$(git log --oneline -1 2>/dev/null || echo "?")
+    echo "    branch:    $BRANCH"
+    echo "    HEAD:      $COMMIT"
+fi
+echo
 
 # -----------------------------------------------------------------------------
-# Existence check on the 8 slurm files.
+# Locate apptainer (preflight runs INSIDE the SIF so we need it on PATH).
 # -----------------------------------------------------------------------------
+if ! command -v apptainer >/dev/null 2>&1; then
+    if command -v module >/dev/null 2>&1; then
+        module load apptainer 2>/dev/null || true
+    fi
+fi
+if ! command -v apptainer >/dev/null 2>&1; then
+    echo "FATAL: apptainer not on PATH and 'module load apptainer' did not help." 1>&2
+    echo "       Try logging in to a shell that can load the apptainer module," 1>&2
+    echo "       or ask your cluster admin which module to load." 1>&2
+    exit 1
+fi
+
+CONTAINERDIR=/share/resources/containers/apptainer
+SIF="$CONTAINERDIR/pytorch-2.7.0.sif"
+if [ ! -r "$SIF" ]; then
+    echo "FATAL: apptainer SIF not readable: $SIF" 1>&2
+    exit 1
+fi
+
+# -----------------------------------------------------------------------------
+# PREFLIGHT — runs inside the SIF; mirrors the runtime env the slurm jobs use.
+# If anything below fails, we bail out before submitting any job.
+# -----------------------------------------------------------------------------
+echo "=== preflight (inside apptainer SIF) ==="
+PREFLIGHT_PY=experiments/0505_CNNDM_compare/scripts/preflight_cnndm_300.py
+if ! apptainer exec --nv "$SIF" python3 -u "$PREFLIGHT_PY"; then
+    echo 1>&2
+    echo "FATAL: preflight failed. No jobs submitted." 1>&2
+    echo "Read the per-check details above and re-run after fixing." 1>&2
+    exit 2
+fi
+
+if [ "$PREFLIGHT_ONLY" -eq 1 ]; then
+    echo
+    echo "[--preflight-only] preflight passed; skipping job submission."
+    exit 0
+fi
+
+# -----------------------------------------------------------------------------
+# Existence check on the 8 slurm files (preflight already does this in Python,
+# but keep a shell-level guard so the rest of the script can rely on them).
+# -----------------------------------------------------------------------------
+JOBS=experiments/0505_CNNDM_compare/jobs
 for f in "$JOBS/job_collect_cnndm_300.slurm" \
          "$JOBS/job_build_targets_cnndm_300.slurm" \
          "$JOBS/job_baselines_cnndm_300.slurm" \
@@ -83,10 +157,8 @@ done
 # Wrapper that always passes the resolved account.
 _sb() { sbatch -A "$SLURM_ACCOUNT" "$@"; }
 
-echo "=== Submitting CNN/DM 300-prompt full pipeline ==="
-echo "    repo root:     $REPO_ROOT"
-echo "    SLURM account: $SLURM_ACCOUNT"
 echo
+echo "=== submitting (SLURM account: $SLURM_ACCOUNT) ==="
 
 # Stage 1: collect (no deps)
 JC=$(_sb --parsable "$JOBS/job_collect_cnndm_300.slurm")
