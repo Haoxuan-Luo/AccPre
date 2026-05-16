@@ -9,16 +9,22 @@ A faithful CNN/DailyMail clone of the `experiments/0505_OWT_compare/` pipeline, 
 git clone <repo-url>     # or: git fetch && git checkout <branch>
 cd AccPre
 
-# 2. (Optional) Point HuggingFace caches at a project / scratch dir so that the
+# 2. (One-time, on a login node) Install the Python deps that are NOT in the
+#    shared apptainer SIF — transformers + datasets — into your ~/.local.
+#    Skip this step if you've already installed transformers and datasets
+#    into your user-site for another project. Idempotent (re-running is safe).
+bash experiments/0505_CNNDM_compare/scripts/setup_collab_env.sh
+
+# 3. (Optional) Point HuggingFace caches at a project / scratch dir so that the
 #    GPT-2 XL (~6 GB) and MDLM-OWT (~880 MB) downloads land where you want.
 export HF_HOME=/path/to/your/hf_cache    # defaults to ~/.cache/huggingface
 
-# 3. (Recommended) Run the preflight first. It checks the registration in
+# 4. (Recommended) Run the preflight first. It checks the registration in
 #    accpre/, the slurm files, container readability, dataset config, and the
 #    cell counts. It does NOT submit any job.
 bash experiments/0505_CNNDM_compare/submit_full_cnndm_300.sh --preflight-only
 
-# 4. Submit the 8-stage pipeline with YOUR Slurm account.
+# 5. Submit the 8-stage pipeline with YOUR Slurm account.
 #    Either:
 SLURM_ACCOUNT=<your-account> bash experiments/0505_CNNDM_compare/submit_full_cnndm_300.sh
 #    Or with a positional argument:
@@ -183,6 +189,7 @@ cat experiments/0505_CNNDM_compare/logs/collect_300_<job_id>.out
 ```
 
 Common root causes:
+- **`transformers` / `datasets` missing from your user-site** — you skipped step 2 of Quick-start. The shared SIF only provides torch + pyyaml. Run `bash experiments/0505_CNNDM_compare/scripts/setup_collab_env.sh` once on a login node, then rerun the preflight. The preflight's `_check_python_imports` step explicitly flags this and points you here.
 - Stale clone (missing `cnn_dm_300` in `accpre/`) — `git pull`, then `--preflight-only` again.
 - Apptainer module name differs on your cluster — `module avail apptainer` to confirm.
 - HF cache not writable — set `HF_HOME` to a scratch / project directory.

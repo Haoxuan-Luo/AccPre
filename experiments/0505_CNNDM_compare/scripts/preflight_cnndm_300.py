@@ -204,7 +204,13 @@ def _check_apptainer_sif() -> Tuple[bool, str]:
 
 
 def _check_python_imports() -> Tuple[bool, str]:
-    """Import the modules the pipeline depends on at runtime."""
+    """Import the modules the pipeline depends on at runtime.
+
+    The cluster's pytorch-2.7.0.sif provides GPU torch + yaml but NOT
+    transformers/datasets. Those live in the invoking user's ~/.local
+    (PEP 370 user-site) and are installed by `setup_collab_env.sh`.
+    If they are missing here, point the user to that one-line install.
+    """
     sys.path.insert(0, str(_REPO_ROOT))
     needed = (
         "torch",
@@ -225,7 +231,20 @@ def _check_python_imports() -> Tuple[bool, str]:
         except Exception as e:                     # noqa: BLE001
             failed.append(f"{mod}({type(e).__name__})")
     if failed:
-        return False, f"failed: {failed}"
+        hint = ""
+        # The likely cause when the failing set includes transformers/datasets
+        # is a fresh user account that hasn't run the setup script yet.
+        user_site_missing = {"transformers", "datasets"} & {
+            f.split("(", 1)[0] for f in failed
+        }
+        if user_site_missing:
+            hint = (
+                "  -- LIKELY CAUSE: user-site packages not installed yet. "
+                "Run ONCE on a login node: "
+                "`bash experiments/0505_CNNDM_compare/scripts/setup_collab_env.sh` "
+                "and then rerun this preflight."
+            )
+        return False, f"failed: {failed}{hint}"
     return True, f"all {len(needed)} imports OK"
 
 
