@@ -48,25 +48,26 @@ def _load_protocol_from_yaml(path: str) -> ProtocolConfig:
 
 def _load_split_prompts(
     splits: List[str],
+    dataset: str = "owt",
 ) -> List[Tuple[int, torch.Tensor, str, str]]:
     """Return (global_prompt_idx, prefix_ids, prefix_text, split_name) tuples.
 
-    Global prompt indices are the pool indices (0..79). They are used
-    for `round_rng_seed` derivation so the same prompt always seeds
-    identically no matter which split(s) we collect on.
+    Global prompt indices are the pool indices for the chosen dataset.
+    They are used for `round_rng_seed` derivation so the same prompt
+    always seeds identically no matter which split(s) we collect on.
     """
-    from accpre.data.splits import (
-        POOL_SIZE, TRAIN_N, VAL_N, PREFIX_LEN, PROMPT_SEED,
-    )
-    from accpre.data.prompts import load_owt_prompts
+    from accpre.data.prompts import load_prompts
+    from accpre.data.splits import get_split_config
 
-    pool = load_owt_prompts(
-        n_prompts=POOL_SIZE, prefix_len=PREFIX_LEN, seed=PROMPT_SEED,
+    cfg = get_split_config(dataset)
+    pool = load_prompts(
+        dataset=cfg.name, n_prompts=cfg.pool_size,
+        prefix_len=cfg.prefix_len, seed=cfg.seed,
     )
     ranges = {
-        "train": (0, TRAIN_N),
-        "val": (TRAIN_N, TRAIN_N + VAL_N),
-        "test": (TRAIN_N + VAL_N, POOL_SIZE),
+        "train": (0, cfg.train_n),
+        "val":   (cfg.train_n, cfg.train_n + cfg.val_n),
+        "test":  (cfg.train_n + cfg.val_n, cfg.pool_size),
     }
     out: List[Tuple[int, torch.Tensor, str, str]] = []
     for s in splits:
@@ -145,7 +146,14 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Stage 2A.0 — offline collection.")
     ap.add_argument("--config", type=str, required=True,
                     help="Path to protocol.yaml.")
-    ap.add_argument("--out", type=str, default="data_collected/stage1.pt")
+    ap.add_argument("--out", type=str, default=None,
+                    help="Output records path. Defaults to "
+                         "data_collected/stage1_pp_<dataset>.pt.")
+    ap.add_argument("--dataset", type=str, default="owt",
+                    choices=("owt", "cnn_dm", "mt_bench",
+                             "owt_300", "owt_smoke", "cnn_dm_300"),
+                    help="Which prompt pool to use; per-dataset split "
+                         "sizes come from accpre.data.splits.DATASETS.")
     ap.add_argument("--splits", type=str, default="train,val,test",
                     help="Comma-separated: train,val,test.")
     ap.add_argument("--gamma", type=int, default=8)
@@ -154,7 +162,8 @@ def main() -> None:
     args = ap.parse_args()
 
     splits = [s.strip() for s in args.splits.split(",") if s.strip()]
-    os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
+    out_path = args.out or f"data_collected/stage1_pp_{args.dataset}.pt"
+    os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
 
     protocol = _load_protocol_from_yaml(args.config)
 
@@ -165,7 +174,7 @@ def main() -> None:
     dtype = {
         "float32": torch.float32, "float16": torch.float16, "bfloat16": torch.bfloat16,
     }[protocol.dtype]
-    print(f"[collect] device={device} dtype={protocol.dtype}")
+    print(f"[collect] device={device} dtype={protocol.dtype} dataset={args.dataset}")
 
     drafter = MDLMDrafter(
         model_name=protocol.drafter_model, device=device, dtype=dtype,
@@ -174,7 +183,7 @@ def main() -> None:
         model_name=protocol.verifier_model, device=device, dtype=dtype,
     )
 
-    prompts = _load_split_prompts(splits)
+    prompts = _load_split_prompts(splits, dataset=args.dataset)
     print(f"[collect] loaded {len(prompts)} prompts across splits {splits}")
 
     t_start = time.time()
@@ -185,9 +194,9 @@ def main() -> None:
     )
     elapsed = time.time() - t_start
 
-    save_records(records, args.out)
+    save_records(records, out_path)
     print(
-        f"[collect] wrote {len(records)} records to {args.out} "
+        f"[collect] wrote {len(records)} records to {out_path} "
         f"in {elapsed:.1f}s"
     )
 

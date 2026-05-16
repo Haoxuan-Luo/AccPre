@@ -1,0 +1,54 @@
+# Template — joint smoke cell (CNN/DailyMail). Do NOT consume directly;
+# the smoke runner materialises one config per (target, transformer_arch).
+protocol_path: configs/protocol.yaml
+
+mode: joint
+family: hidden_per_pos_v2
+gamma: 15
+T: 1                                    # T=1 protocol
+
+# Mini split: 2 train / 1 val / 1 test prompts (joint is heavy per-step).
+dataset: cnn_dm
+train_prompt_indices: [0, 1]
+val_prompt_indices:   [40]
+test_prompt_indices:  [60]
+
+# Architecture (transformer only — mlp_pos is frozen-only)
+arch: causal_transformer_pos           # overridden per cell
+d_model: 256
+num_layers: 2
+num_heads: 4
+dropout: 0.1
+token_emb_dim: 64
+
+# Target (overridden per cell)
+target: alpha_q2
+
+# Live-target flags. Joint MUST not load fixed-target files; flags set per target.
+live_relmax_target: false
+live_q2_target: true                   # overridden per target
+live_dep_target: false
+# dep_targets_path is INTENTIONALLY ABSENT — sanity scripts assert this.
+
+# Drafter is frozen for this experiment (interface staged for adaptation).
+drafter_train_mode: frozen
+lambda_pred: 1.0
+lambda_mdlm: 0.0
+lambda_kl: 0.0
+lambda_mono: 0.0
+
+# Optimizer
+batch_size: 4
+grad_accum: 1
+head_lr: 1.0e-3
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 1
+early_stop_patience: 2
+seed: 0
+
+# Loss
+loss: expected_survival_weighted_mse
+
+# Records (used for prefix index only; targets are computed live).
+data_path: data_collected/stage1_pp_cnn_dm_g15_T1.pt

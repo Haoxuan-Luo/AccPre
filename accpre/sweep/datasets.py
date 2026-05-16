@@ -3,21 +3,27 @@
 A uniform API that lets sweep scripts stay dataset-agnostic. Each
 `DatasetBundle` tells the framework:
 
-  - where the pre-collected RoundRecords live (training data for frozen),
-  - where the precomputed dependence-target file lives (if any),
-  - how to load online-eval prompts (by count).
+  - where the pre-collected RoundRecords live (training data),
+  - where the precomputed dependence-target file lives (dep families),
+  - how to load online-eval prompts (by count, drawn from the test split).
 
-Currently wired:
-  owt — canonical 80-prompt OpenWebText pool (split 40/20/20).
+Wired datasets (loaders exist in code; whether the records / dep files
+are populated on disk is a runtime check that callers handle):
 
-Stubbed (raises a clear NotImplementedError when selected):
-  cnn_dm — CNN/DailyMail. Needs (a) a CNN/DM prompt loader added to
-           `accpre/data/prompts.py`, (b) a stage-1 RoundRecord collection
-           on CNN/DM (via `scripts/recollect_all.py`-style pipeline),
-           and (c) a precomputed dep-targets file on that collection.
+  owt       — OpenWebText, 80-prompt pool (40/20/20), prefix_len=32.
+  cnn_dm    — CNN/DailyMail v3.0.0, 80-prompt pool (40/20/20).
+  mt_bench  — MT-Bench (lmsys),     40-prompt pool (20/10/10) — capped
+              by usable-question count (only 48/80 official MT-Bench
+              prompts clear prefix_len=32 after tokenization).
 
-If/when you wire a third dataset, add a DatasetBundle entry below.
-Keep the `name` key lowercase and match it to the --dataset flag.
+Per-dataset split sizes come from `accpre.data.splits.DATASETS`. Path
+convention for new datasets is:
+
+    data_collected/stage1_pp_<dataset>.pt
+    data_collected/stage1_pp_<dataset>_dep.pt
+
+OWT keeps its legacy un-suffixed path (`stage1_pp.pt` / `stage1_pp_dep.pt`)
+for backward compatibility with files already on disk.
 """
 
 from __future__ import annotations
@@ -45,28 +51,38 @@ class DatasetBundle:
     wired: bool
 
 
-def _owt_test_prompts(
-    n_prompts: int,
-) -> Tuple[List[Tuple[torch.Tensor, str]], List[int]]:
-    from accpre.data.splits import test_split, TRAIN_N, VAL_N
-    pool = test_split()
-    if n_prompts > len(pool):
-        raise ValueError(
-            f"OWT test split has {len(pool)} prompts; requested {n_prompts}."
-        )
-    prompts = pool[:n_prompts]
-    offset = TRAIN_N + VAL_N
-    indices = list(range(offset, offset + n_prompts))
-    return prompts, indices
+def _make_test_prompt_loader(dataset_name: str) -> PromptLoader:
+    """Build a `(n_prompts) -> (prompts, indices)` loader for `dataset_name`.
 
+    Returns prompts from the dataset's TEST split (last `test_n` entries
+    of the pool). Indices are the global pool indices, used by the eval
+    harness as `prompt_idx` when seeding round RNGs and feature
+    extraction — they must match the indices used during stage-1
+    collection on the same dataset.
+    """
+    def loader(
+        n_prompts: int,
+    ) -> Tuple[List[Tuple[torch.Tensor, str]], List[int]]:
+        from accpre.data.prompts import load_prompts
+        from accpre.data.splits import get_split_config
 
-def _stub_loader(name: str, reason: str) -> PromptLoader:
-    def raiser(n_prompts: int):
-        raise NotImplementedError(
-            f"dataset {name!r} is not wired: {reason}. "
-            f"Edit accpre/sweep/datasets.py to register it."
+        cfg = get_split_config(dataset_name)
+        pool = load_prompts(
+            dataset=cfg.name, n_prompts=cfg.pool_size,
+            prefix_len=cfg.prefix_len, seed=cfg.seed,
         )
-    return raiser
+        test_offset = cfg.train_n + cfg.val_n
+        test_pool = pool[test_offset:cfg.pool_size]
+        if n_prompts > len(test_pool):
+            raise ValueError(
+                f"{dataset_name!r} test split has {len(test_pool)} "
+                f"prompts; requested {n_prompts}."
+            )
+        prompts = test_pool[:n_prompts]
+        indices = list(range(test_offset, test_offset + n_prompts))
+        return prompts, indices
+
+    return loader
 
 
 _REGISTRY = {
@@ -74,25 +90,44 @@ _REGISTRY = {
         name="owt",
         records_path=_REPO_ROOT / "data_collected/stage1_pp.pt",
         dep_targets_path=_REPO_ROOT / "data_collected/stage1_pp_dep.pt",
-        prompt_loader=_owt_test_prompts,
-        description="OpenWebText, 80-prompt pool, prefix_len=32, seed=42.",
+        prompt_loader=_make_test_prompt_loader("owt"),
+        description=(
+            "OpenWebText, 80-prompt pool (40/20/20), prefix_len=32, seed=42."
+        ),
         wired=True,
     ),
     "cnn_dm": DatasetBundle(
         name="cnn_dm",
-        records_path=_REPO_ROOT / "data_collected/cnn_dm_pp.pt",
-        dep_targets_path=_REPO_ROOT / "data_collected/cnn_dm_pp_dep.pt",
-        prompt_loader=_stub_loader(
-            "cnn_dm",
-            "needs a load_cnn_dm_prompts helper in accpre/data/prompts.py, "
-            "a stage-1 collection on that pool, and (for dep training) a "
-            "precomputed dep-targets file",
-        ),
+        records_path=_REPO_ROOT / "data_collected/stage1_pp_cnn_dm.pt",
+        dep_targets_path=_REPO_ROOT / "data_collected/stage1_pp_cnn_dm_dep.pt",
+        prompt_loader=_make_test_prompt_loader("cnn_dm"),
         description=(
-            "[NOT WIRED] CNN/DailyMail. Missing: prompt loader, collected "
-            "records, dep-targets file."
+            "CNN/DailyMail v3.0.0, 80-prompt pool (40/20/20), "
+            "prefix_len=32, seed=42."
         ),
-        wired=False,
+        wired=True,
+    ),
+    "mt_bench": DatasetBundle(
+        name="mt_bench",
+        records_path=_REPO_ROOT / "data_collected/stage1_pp_mt_bench.pt",
+        dep_targets_path=_REPO_ROOT / "data_collected/stage1_pp_mt_bench_dep.pt",
+        prompt_loader=_make_test_prompt_loader("mt_bench"),
+        description=(
+            "MT-Bench (lmsys), 40-prompt pool (20/10/10), "
+            "prefix_len=32, seed=42."
+        ),
+        wired=True,
+    ),
+    "cnn_dm_300": DatasetBundle(
+        name="cnn_dm_300",
+        records_path=_REPO_ROOT / "data_collected/stage1_pp_cnn_dm_300_g15_T1.pt",
+        dep_targets_path=_REPO_ROOT / "data_collected/stage1_pp_cnn_dm_300_g15_T1_dep.pt",
+        prompt_loader=_make_test_prompt_loader("cnn_dm_300"),
+        description=(
+            "CNN/DailyMail v3.0.0, 300-prompt pool (160/40/100), "
+            "prefix_len=32, seed=42."
+        ),
+        wired=True,
     ),
 }
 

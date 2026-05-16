@@ -23,7 +23,21 @@ venv/
 
 checkpoints/
 data_collected/
-experiments/
+
+# Ignore all experiment workspaces by default; re-include the CNNDM handoff
+# workspace below, then re-exclude its runtime artifacts so only source files
+# are committed.
+experiments/*
+!experiments/0505_CNNDM_compare
+
+# Runtime artifacts under the re-included CNNDM workspace (NEVER commit).
+experiments/0505_CNNDM_compare/runs/
+experiments/0505_CNNDM_compare/results/
+experiments/0505_CNNDM_compare/logs/
+# Auto-materialized per-cell smoke configs (written at smoke time; contain
+# absolute paths). The committable templates are `_template_*.yaml`.
+experiments/0505_CNNDM_compare/configs/_smoke/frozen_*.yaml
+experiments/0505_CNNDM_compare/configs/_smoke/joint_*.yaml
 
 # Editor / packaging artifacts
 .idea/

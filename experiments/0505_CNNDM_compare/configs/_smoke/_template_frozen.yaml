@@ -1,0 +1,50 @@
+# Template — frozen smoke cell (CNN/DailyMail). Do NOT consume directly;
+# the smoke runner materialises one config per (target, arch) combination.
+protocol_path: configs/protocol.yaml
+
+mode: frozen
+family: hidden_per_pos_v2
+gamma: 15
+T: 1                                    # T=1 protocol; matches stage-1 records
+
+# Mini split: 4 train / 2 val / 2 test prompts from cnn_dm (pool 80 = 40/20/20).
+# train: leading indices in the train half; val: leading indices in the val half; etc.
+dataset: cnn_dm
+train_prompt_indices: [0, 1, 2, 3]
+val_prompt_indices:   [40, 41]
+test_prompt_indices:  [60, 61]
+
+# Architecture
+arch: mlp_pos                          # overridden per cell
+hidden_dim: 128
+d_model: 256
+num_layers: 2
+num_heads: 4
+dropout: 0.1
+token_emb_dim: 64
+
+# Target (overridden per cell)
+target: alpha_q2
+
+# Optimizer
+batch_size: 32
+head_lr: 1.0e-3
+weight_decay: 1.0e-4
+warmup_ratio: 0.05
+max_epochs: 1
+early_stop_patience: 2
+seed: 0
+
+# Loss
+loss: expected_survival_weighted_mse
+lambda_pred: 1.0
+lambda_mdlm: 0.0
+lambda_kl: 0.0
+lambda_mono: 0.0
+
+# Frozen target source — overridden per cell:
+#   alpha_q2 : (None — base dataset uses record.min_pq_j directly)
+#   relmax   : data_collected/stage1_pp_cnn_dm_g15_T1_relmax.pt
+#   dep      : data_collected/stage1_pp_cnn_dm_g15_T1_dep.pt
+data_path: data_collected/stage1_pp_cnn_dm_g15_T1.pt
+dep_targets_path: null
