@@ -49,15 +49,17 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-if [ ! -d "$REPO_ROOT/accpre" ] || [ ! -d "$REPO_ROOT/data_collected" ]; then
+if [ ! -d "$REPO_ROOT/accpre" ]; then
     echo "FATAL: could not locate repository root from script path." 1>&2
     echo "  SCRIPT_DIR=$SCRIPT_DIR" 1>&2
     echo "  REPO_ROOT (computed)=$REPO_ROOT" 1>&2
-    echo "  Run this script from inside an AccPre checkout that has both" 1>&2
-    echo "  accpre/ and data_collected/ at its top level." 1>&2
+    echo "  Run this script from inside an AccPre checkout that has" 1>&2
+    echo "  accpre/ at its top level." 1>&2
     exit 1
 fi
 cd "$REPO_ROOT"
+# data_collected/ is gitignored; create it if a fresh clone hasn't.
+mkdir -p data_collected
 
 JOBS=experiments/0505_CNNDM_compare/jobs
 
