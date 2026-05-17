@@ -34,6 +34,9 @@ experiments/*
 experiments/0505_CNNDM_compare/runs/
 experiments/0505_CNNDM_compare/results/
 experiments/0505_CNNDM_compare/logs/
+# Project-local pip --target deps installed by setup_collab_env.sh.
+# Per-user, per-machine, recreated by the setup script — never commit.
+experiments/0505_CNNDM_compare/.pydeps/
 # Auto-materialized per-cell smoke configs (written at smoke time; contain
 # absolute paths). The committable templates are `_template_*.yaml`.
 experiments/0505_CNNDM_compare/configs/_smoke/frozen_*.yaml

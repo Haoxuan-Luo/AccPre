@@ -30,6 +30,17 @@ module load apptainer
 export CONTAINERDIR=/share/resources/containers/apptainer
 cd "$SLURM_SUBMIT_DIR"
 
+# --- CNNDM project-local Python deps (see job_collect for full rationale) -
+CNNDM_PYDEPS="$SLURM_SUBMIT_DIR/experiments/0505_CNNDM_compare/.pydeps"
+if [ ! -d "$CNNDM_PYDEPS" ]; then
+    echo "[FATAL] CNNDM_PYDEPS not found: $CNNDM_PYDEPS" 1>&2
+    echo "        Run: bash experiments/0505_CNNDM_compare/scripts/setup_collab_env.sh" 1>&2
+    exit 2
+fi
+export APPTAINERENV_PYTHONNOUSERSITE=1
+export APPTAINERENV_PYTHONPATH="$SLURM_SUBMIT_DIR:$CNNDM_PYDEPS"
+# -----------------------------------------------------------------------
+
 ROOT=experiments/0505_CNNDM_compare
 PYTHON="apptainer exec --nv $CONTAINERDIR/pytorch-2.7.0.sif python3 -u"
 

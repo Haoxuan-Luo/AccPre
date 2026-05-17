@@ -9,22 +9,44 @@ A faithful CNN/DailyMail clone of the `experiments/0505_OWT_compare/` pipeline, 
 git clone <repo-url>     # or: git fetch && git checkout <branch>
 cd AccPre
 
-# 2. (One-time, on a login node) Install the Python deps that are NOT in the
-#    shared apptainer SIF — transformers + datasets — into your ~/.local.
-#    Skip this step if you've already installed transformers and datasets
-#    into your user-site for another project. Idempotent (re-running is safe).
+# 2. (One-time, on a login node) Install the Python deps that are NOT in
+#    the shared apptainer SIF — transformers, datasets, dill, multiprocess
+#    — into a PROJECT-LOCAL directory:
+#        experiments/0505_CNNDM_compare/.pydeps/
+#    NOT into ~/.local. ~/.local is unreliably visible inside apptainer
+#    batch jobs (a previous run of this pipeline failed in 6 seconds with
+#    "ModuleNotFoundError: No module named 'transformers'" because the
+#    batch node could not see the login-node user-site). The project-local
+#    path is always visible because it sits inside the repo itself.
+#    Idempotent — re-running is safe; pip skips packages already at the
+#    pinned version.
 bash experiments/0505_CNNDM_compare/scripts/setup_collab_env.sh
 
-# 3. (Optional) Point HuggingFace caches at a project / scratch dir so that the
-#    GPT-2 XL (~6 GB) and MDLM-OWT (~880 MB) downloads land where you want.
-export HF_HOME=/path/to/your/hf_cache    # defaults to ~/.cache/huggingface
+# 3. (Optional) Point HuggingFace caches at a project / scratch dir so that
+#    the GPT-2 XL (~6 GB) and MDLM-OWT (~880 MB) downloads land where you
+#    want. Defaults to ~/.cache/huggingface.
+export HF_HOME=/path/to/your/hf_cache
 
-# 4. (Recommended) Run the preflight first. It checks the registration in
-#    accpre/, the slurm files, container readability, dataset config, and the
-#    cell counts. It does NOT submit any job.
+# 4. (Recommended) Run the LOGIN-NODE preflight. It checks the registration
+#    in accpre/, the slurm files, container readability, dataset config,
+#    cell counts (144 frozen + 96 joint + 180 eval), AND that .pydeps is
+#    populated and resolves correctly. It does NOT submit any job.
 bash experiments/0505_CNNDM_compare/submit_full_cnndm_300.sh --preflight-only
 
-# 5. Submit the 8-stage pipeline with YOUR Slurm account.
+# 5. (Strongly recommended after the user-site -> batch issue) Submit ONLY
+#    the small batch-environment preflight. This is a CPU-only Slurm job
+#    (<2 min walltime budget; CPU partition `standard`) that re-runs the
+#    same preflight inside the BATCH apptainer context, where ~/.local may
+#    not be visible. If this passes, every other cnndm_300 slurm job will
+#    import transformers/datasets correctly too.
+SLURM_ACCOUNT=<your-account> bash experiments/0505_CNNDM_compare/submit_full_cnndm_300.sh --batch-preflight
+
+#    Wait for it to finish (squeue -j <id>), then inspect:
+#        cat experiments/0505_CNNDM_compare/logs/preflight_300_<id>.out
+#    It must end with "[batch-preflight] PASS". If it does NOT, do not
+#    proceed to step 6 — fix the underlying issue first.
+
+# 6. Submit the full 8-stage pipeline with YOUR Slurm account.
 #    Either:
 SLURM_ACCOUNT=<your-account> bash experiments/0505_CNNDM_compare/submit_full_cnndm_300.sh
 #    Or with a positional argument:
@@ -33,9 +55,17 @@ bash experiments/0505_CNNDM_compare/submit_full_cnndm_300.sh <your-account>
 
 The submit script:
 - prints the git branch and HEAD commit at the start (so you can report exactly what you ran)
-- runs the same preflight as step 3 (it is always executed before any sbatch)
-- if the preflight fails, exits with no jobs submitted
-- if the preflight passes, prints the 8 job IDs and the dependency graph, plus copy-pasteable `squeue` / `scancel` commands.
+- runs the same preflight as step 4 (it is always executed before any sbatch); the preflight runs with `PYTHONNOUSERSITE=1` and `PYTHONPATH=<repo>:<.pydeps>` — the exact same env every batch job uses
+- if the preflight fails (including a missing `.pydeps/` from skipping step 2), exits with no jobs submitted
+- if the preflight passes, prints the 8 job IDs and the dependency graph, plus copy-pasteable `squeue` / `scancel` commands
+
+Every cnndm_300 slurm job carries the same env block:
+```bash
+CNNDM_PYDEPS="$SLURM_SUBMIT_DIR/experiments/0505_CNNDM_compare/.pydeps"
+export APPTAINERENV_PYTHONNOUSERSITE=1
+export APPTAINERENV_PYTHONPATH="$SLURM_SUBMIT_DIR:$CNNDM_PYDEPS"
+```
+so login-node preflight and every batch job use IDENTICAL Python paths.
 
 ### Monitor
 
@@ -189,7 +219,13 @@ cat experiments/0505_CNNDM_compare/logs/collect_300_<job_id>.out
 ```
 
 Common root causes:
-- **`transformers` / `datasets` missing from your user-site** — you skipped step 2 of Quick-start. The shared SIF only provides torch + pyyaml. Run `bash experiments/0505_CNNDM_compare/scripts/setup_collab_env.sh` once on a login node, then rerun the preflight. The preflight's `_check_python_imports` step explicitly flags this and points you here.
+- **`transformers` / `datasets` not in `.pydeps/`** — you skipped step 2 of Quick-start, or `.pydeps` got deleted. The shared SIF only provides torch + pyyaml + numpy/pyarrow/pandas. The cnndm_300 chain stages transformers/datasets/dill/multiprocess into `experiments/0505_CNNDM_compare/.pydeps/` via `setup_collab_env.sh`. Every slurm job sets `PYTHONNOUSERSITE=1` (no `~/.local`) and `PYTHONPATH=<repo>:<.pydeps>`, so missing `.pydeps` ⇒ instant ModuleNotFoundError. Fix:
+  ```bash
+  bash experiments/0505_CNNDM_compare/scripts/setup_collab_env.sh
+  bash experiments/0505_CNNDM_compare/submit_full_cnndm_300.sh --preflight-only
+  SLURM_ACCOUNT=<your-account> bash experiments/0505_CNNDM_compare/submit_full_cnndm_300.sh --batch-preflight
+  ```
+- **Login preflight passes but batch fails anyway** — this used to happen when the pipeline relied on `~/.local`; the login node and the batch node have different views of HOME/UID, and `~/.local` was visible on one but not the other. Mitigation: always run the `--batch-preflight` (step 5) BEFORE submitting the full pipeline. If `--preflight-only` passes but `--batch-preflight` fails, share the `preflight_300_<id>.err` log back.
 - Stale clone (missing `cnn_dm_300` in `accpre/`) — `git pull`, then `--preflight-only` again.
 - Apptainer module name differs on your cluster — `module avail apptainer` to confirm.
 - HF cache not writable — set `HF_HOME` to a scratch / project directory.

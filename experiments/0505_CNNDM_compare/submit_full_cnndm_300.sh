@@ -34,21 +34,31 @@
 set -euo pipefail
 
 # -----------------------------------------------------------------------------
-# Parse args. --preflight-only is a flag; everything else is treated as the
-# Slurm account if not already set via $SLURM_ACCOUNT.
+# Parse args.
+#   --preflight-only : run preflight inside SIF on the login node; submit nothing
+#   --batch-preflight: submit ONLY the batch preflight slurm job; nothing else
+#   everything else  : treated as the Slurm account (if SLURM_ACCOUNT unset)
 # -----------------------------------------------------------------------------
 PREFLIGHT_ONLY=0
+BATCH_PREFLIGHT=0
 POSITIONAL_ACCOUNT=""
 for arg in "$@"; do
     case "$arg" in
         --preflight-only) PREFLIGHT_ONLY=1 ;;
+        --batch-preflight) BATCH_PREFLIGHT=1 ;;
         --*) echo "FATAL: unknown flag: $arg" 1>&2; exit 1 ;;
         *) POSITIONAL_ACCOUNT="$arg" ;;
     esac
 done
 SLURM_ACCOUNT="${SLURM_ACCOUNT:-$POSITIONAL_ACCOUNT}"
 
-# Account is REQUIRED for actual submission; preflight-only mode tolerates its absence.
+if [ "$PREFLIGHT_ONLY" -eq 1 ] && [ "$BATCH_PREFLIGHT" -eq 1 ]; then
+    echo "FATAL: --preflight-only and --batch-preflight are mutually exclusive." 1>&2
+    exit 1
+fi
+
+# Account is REQUIRED for any sbatch (full chain or batch preflight). Only
+# --preflight-only (login-node, no sbatch) tolerates a missing account.
 if [ "$PREFLIGHT_ONLY" -eq 0 ] && [ -z "$SLURM_ACCOUNT" ]; then
     cat <<EOF 1>&2
 FATAL: no Slurm account provided.
@@ -57,8 +67,11 @@ Set the SLURM_ACCOUNT environment variable, e.g.:
 or pass it as the first positional argument:
     bash $0 <your-account>
 
-To run preflight only (no jobs submitted, account not required):
+To run preflight only on the login node (no jobs submitted, account not required):
     bash $0 --preflight-only
+
+To submit only the tiny batch preflight slurm job (no full pipeline):
+    SLURM_ACCOUNT=<your-account> bash $0 --batch-preflight
 EOF
     exit 1
 fi
@@ -117,14 +130,41 @@ if [ ! -r "$SIF" ]; then
 fi
 
 # -----------------------------------------------------------------------------
-# PREFLIGHT — runs inside the SIF; mirrors the runtime env the slurm jobs use.
-# If anything below fails, we bail out before submitting any job.
+# Project-local Python deps (replaces the old ~/.local user-site approach).
+# Every cnndm_300 slurm file relies on this path being populated and visible.
 # -----------------------------------------------------------------------------
-echo "=== preflight (inside apptainer SIF) ==="
+CNNDM_PYDEPS="$REPO_ROOT/experiments/0505_CNNDM_compare/.pydeps"
+if [ ! -d "$CNNDM_PYDEPS" ]; then
+    cat <<EOF 1>&2
+FATAL: CNNDM project-local Python deps not found at:
+    $CNNDM_PYDEPS
+
+Run ONCE on a login node:
+    bash experiments/0505_CNNDM_compare/scripts/setup_collab_env.sh
+
+That script installs transformers/datasets/dill/multiprocess into the path
+above. Every cnndm_300 slurm file expects it (.pydeps + PYTHONPATH +
+PYTHONNOUSERSITE=1). After it runs, re-invoke this submit script.
+EOF
+    exit 2
+fi
+
+# -----------------------------------------------------------------------------
+# PREFLIGHT — runs inside the SIF with the EXACT env every slurm job uses
+# (PYTHONNOUSERSITE=1, PYTHONPATH=REPO_ROOT:CNNDM_PYDEPS). So if preflight
+# passes here on the login node, the only remaining failure mode is that
+# the batch node's apptainer context differs from the login node's — for
+# which there is the separate --batch-preflight slurm job.
+# -----------------------------------------------------------------------------
+echo "=== preflight (inside apptainer SIF; PYTHONNOUSERSITE=1, PYTHONPATH=repo:.pydeps) ==="
 PREFLIGHT_PY=experiments/0505_CNNDM_compare/scripts/preflight_cnndm_300.py
-if ! apptainer exec --nv "$SIF" python3 -u "$PREFLIGHT_PY"; then
+APPTAINERENV_PYTHONNOUSERSITE=1 \
+APPTAINERENV_PYTHONPATH="$REPO_ROOT:$CNNDM_PYDEPS" \
+  apptainer exec --nv "$SIF" python3 -u "$PREFLIGHT_PY"
+RC=$?
+if [ $RC -ne 0 ]; then
     echo 1>&2
-    echo "FATAL: preflight failed. No jobs submitted." 1>&2
+    echo "FATAL: preflight failed (rc=$RC). No jobs submitted." 1>&2
     echo "Read the per-check details above and re-run after fixing." 1>&2
     exit 2
 fi
@@ -132,6 +172,8 @@ fi
 if [ "$PREFLIGHT_ONLY" -eq 1 ]; then
     echo
     echo "[--preflight-only] preflight passed; skipping job submission."
+    echo "Next: optionally verify the BATCH environment too (recommended):"
+    echo "    SLURM_ACCOUNT=<your-account> bash $0 --batch-preflight"
     exit 0
 fi
 
@@ -147,7 +189,8 @@ for f in "$JOBS/job_collect_cnndm_300.slurm" \
          "$JOBS/job_train_joint_cnndm_300.slurm" \
          "$JOBS/job_pick_best_cnndm_300.slurm" \
          "$JOBS/job_eval_predictors_cnndm_300.slurm" \
-         "$JOBS/job_aggregate_cnndm_300.slurm"; do
+         "$JOBS/job_aggregate_cnndm_300.slurm" \
+         "$JOBS/job_preflight_cnndm_300.slurm"; do
     if [ ! -f "$f" ]; then
         echo "FATAL: missing slurm file: $f" 1>&2
         exit 1
@@ -156,6 +199,36 @@ done
 
 # Wrapper that always passes the resolved account.
 _sb() { sbatch -A "$SLURM_ACCOUNT" "$@"; }
+
+# -----------------------------------------------------------------------------
+# --batch-preflight: submit ONLY the small batch-preflight slurm job.
+# Used after setup_collab_env.sh + --preflight-only when the user wants to
+# confirm the batch apptainer env (compute node, not login node) also imports
+# everything correctly. Does NOT submit the full pipeline.
+# -----------------------------------------------------------------------------
+if [ "$BATCH_PREFLIGHT" -eq 1 ]; then
+    echo
+    echo "=== submitting batch preflight only (SLURM account: $SLURM_ACCOUNT) ==="
+    JP_PRE=$(_sb --parsable "$JOBS/job_preflight_cnndm_300.slurm")
+    cat <<EOF
+
+=== Submitted cnndm300_preflight (BATCH preflight only) ===
+  preflight  JP_PRE=$JP_PRE
+
+Watch progress:
+  squeue -j $JP_PRE -o "%.12i %.20j %.12T %.10M %.20R"
+
+When it finishes (typically <2 min on the standard partition), the log
+will be at:
+  experiments/0505_CNNDM_compare/logs/preflight_300_${JP_PRE}.out
+  experiments/0505_CNNDM_compare/logs/preflight_300_${JP_PRE}.err
+
+If it exits 0, the batch environment imports everything correctly and
+it is safe to submit the full pipeline:
+  SLURM_ACCOUNT=$SLURM_ACCOUNT bash $0
+EOF
+    exit 0
+fi
 
 echo
 echo "=== submitting (SLURM account: $SLURM_ACCOUNT) ==="

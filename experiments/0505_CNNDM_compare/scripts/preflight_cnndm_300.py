@@ -29,6 +29,18 @@ _THIS = Path(__file__).resolve()
 _EXP_ROOT = _THIS.parents[1]
 _REPO_ROOT = _THIS.parents[3]
 
+# Project-local Python deps. Must match the value used by setup_collab_env.sh
+# and by the APPTAINERENV_PYTHONPATH set in every cnndm_300 slurm file.
+_CNNDM_PYDEPS = _EXP_ROOT / ".pydeps"
+
+# Packages that MUST resolve to _CNNDM_PYDEPS (not to ~/.local, not to the
+# container's site-packages). If any resolves elsewhere, the batch jobs
+# will fail the same way the collaborator's cnndm300_collect did.
+_PYDEPS_REQUIRED = ("transformers", "datasets", "dill", "multiprocess")
+
+# Packages that come from the container itself (and should NOT be in .pydeps).
+_CONTAINER_REQUIRED = ("torch", "yaml")
+
 
 # ------------------------------------------------------------------ small
 # Result registry
@@ -203,20 +215,69 @@ def _check_apptainer_sif() -> Tuple[bool, str]:
     return True, f"{sif} readable ({sz} bytes)"
 
 
-def _check_python_imports() -> Tuple[bool, str]:
-    """Import the modules the pipeline depends on at runtime.
+def _check_cnndm_pydeps_dir() -> Tuple[bool, str]:
+    """The project-local CNNDM_PYDEPS dir must exist and contain package
+    DIRECTORIES (not just dist-info markers) for every required package."""
+    if not _CNNDM_PYDEPS.is_dir():
+        return False, (
+            f"{_CNNDM_PYDEPS} not present. Run ONCE on a login node: "
+            "`bash experiments/0505_CNNDM_compare/scripts/setup_collab_env.sh`"
+        )
+    missing = [r for r in _PYDEPS_REQUIRED
+               if not (_CNNDM_PYDEPS / r).is_dir()]
+    if missing:
+        return False, (
+            f"{_CNNDM_PYDEPS} missing required package dirs: {missing}. "
+            "Re-run setup_collab_env.sh to repopulate."
+        )
+    return True, f"{_CNNDM_PYDEPS} contains {', '.join(_PYDEPS_REQUIRED)}"
 
-    The cluster's pytorch-2.7.0.sif provides GPU torch + yaml but NOT
-    transformers/datasets. Those live in the invoking user's ~/.local
-    (PEP 370 user-site) and are installed by `setup_collab_env.sh`.
-    If they are missing here, point the user to that one-line install.
+
+def _check_user_site_disabled() -> Tuple[bool, str]:
+    """sys.flags.no_user_site must be True in the preflight invocation.
+
+    This proves the caller (submit_full_cnndm_300.sh or the batch slurm
+    preflight job) exported PYTHONNOUSERSITE=1, matching what every other
+    cnndm_300 slurm file does. If a future change accidentally drops that
+    export, this check catches it BEFORE any sbatch is fired."""
+    if not sys.flags.no_user_site:
+        return False, (
+            "PYTHONNOUSERSITE was NOT set in this preflight invocation — "
+            "this preflight is running with ~/.local visible, which means "
+            "it does NOT mirror the batch environment. Re-run via "
+            "`bash experiments/0505_CNNDM_compare/submit_full_cnndm_300.sh "
+            "--preflight-only` so APPTAINERENV_PYTHONNOUSERSITE=1 is set."
+        )
+    return True, "PYTHONNOUSERSITE=1 (~/.local invisible to imports)"
+
+
+def _check_pydeps_in_sys_path() -> Tuple[bool, str]:
+    """_CNNDM_PYDEPS must appear in sys.path. This proves the caller
+    exported PYTHONPATH to include the same dependency dir batch jobs use."""
+    target = str(_CNNDM_PYDEPS)
+    if target not in sys.path:
+        return False, (
+            f"{target} not in sys.path. The caller must export "
+            f"APPTAINERENV_PYTHONPATH=<repo_root>:{target} before "
+            "`apptainer exec ... python3 preflight_cnndm_300.py`."
+        )
+    return True, f"{target} on sys.path"
+
+
+def _check_python_imports() -> Tuple[bool, str]:
+    """Import every module the pipeline depends on at runtime.
+
+    PRECONDITIONS (verified by other checks): PYTHONNOUSERSITE=1 +
+    PYTHONPATH includes _CNNDM_PYDEPS. So these imports must resolve via
+    either the container's site-packages (torch, yaml) or the project-local
+    .pydeps (transformers, datasets, dill, multiprocess). The accpre.*
+    imports are pure-Python source under _REPO_ROOT and resolve via
+    _REPO_ROOT being on sys.path.
     """
     sys.path.insert(0, str(_REPO_ROOT))
     needed = (
-        "torch",
-        "yaml",
-        "transformers",
-        "datasets",
+        *_CONTAINER_REQUIRED,
+        *_PYDEPS_REQUIRED,
         "accpre.collect.cli",
         "accpre.data.prompts",
         "accpre.data.splits",
@@ -232,20 +293,38 @@ def _check_python_imports() -> Tuple[bool, str]:
             failed.append(f"{mod}({type(e).__name__})")
     if failed:
         hint = ""
-        # The likely cause when the failing set includes transformers/datasets
-        # is a fresh user account that hasn't run the setup script yet.
-        user_site_missing = {"transformers", "datasets"} & {
+        pydeps_missing = set(_PYDEPS_REQUIRED) & {
             f.split("(", 1)[0] for f in failed
         }
-        if user_site_missing:
+        if pydeps_missing:
             hint = (
-                "  -- LIKELY CAUSE: user-site packages not installed yet. "
+                "  -- LIKELY CAUSE: .pydeps not populated for these packages. "
                 "Run ONCE on a login node: "
-                "`bash experiments/0505_CNNDM_compare/scripts/setup_collab_env.sh` "
-                "and then rerun this preflight."
+                "`bash experiments/0505_CNNDM_compare/scripts/setup_collab_env.sh`."
             )
         return False, f"failed: {failed}{hint}"
     return True, f"all {len(needed)} imports OK"
+
+
+def _check_pydeps_resolution() -> Tuple[bool, str]:
+    """The 4 .pydeps-required packages must resolve to a path UNDER
+    _CNNDM_PYDEPS. If any resolves to ~/.local or the container, the same
+    package will be missing or differ on a batch node where ~/.local is
+    invisible — which is the exact failure mode this whole change fixes."""
+    bad: List[str] = []
+    sys.path.insert(0, str(_REPO_ROOT))
+    pydeps_abs = str(_CNNDM_PYDEPS.resolve())
+    for mod in _PYDEPS_REQUIRED:
+        m = __import__(mod)
+        f = getattr(m, "__file__", "") or ""
+        if not f:
+            bad.append(f"{mod}: no __file__")
+            continue
+        if not str(Path(f).resolve()).startswith(pydeps_abs):
+            bad.append(f"{mod} resolved to {f} (expected under {pydeps_abs})")
+    if bad:
+        return False, "wrong resolution: " + " | ".join(bad)
+    return True, f"all {len(_PYDEPS_REQUIRED)} resolve under {pydeps_abs}"
 
 
 def _check_collect_cli_lists_cnn_dm_300() -> Tuple[bool, str]:
@@ -324,7 +403,9 @@ def main() -> int:
     print("=== CNN/DM 300 preflight ===")
     print(f"  REPO_ROOT={_REPO_ROOT}")
     print(f"  EXP_ROOT={_EXP_ROOT}")
+    print(f"  CNNDM_PYDEPS={_CNNDM_PYDEPS}")
     print(f"  python={sys.executable}")
+    print(f"  no_user_site={sys.flags.no_user_site}")
     print()
 
     _check("repo_root",                    _check_repo_root)
@@ -349,8 +430,19 @@ def main() -> int:
     _check("sanity_no_relative_max.py invariant holds",
                                             _check_relmax_invariant_via_sanity_script)
     _check("apptainer SIF readable",        _check_apptainer_sif)
+    # The four checks below verify the project-local .pydeps wiring that
+    # replaces the old fragile ~/.local user-site path. They MUST all pass
+    # together: if .pydeps lacks a package, or if the caller forgot to set
+    # PYTHONNOUSERSITE/PYTHONPATH, batch jobs will fail the same way the
+    # collaborator's cnndm300_collect did (6-second ModuleNotFoundError).
+    _check(".pydeps dir populated",         _check_cnndm_pydeps_dir)
+    _check("PYTHONNOUSERSITE=1 (no ~/.local leak)",
+                                            _check_user_site_disabled)
+    _check(".pydeps on sys.path",           _check_pydeps_in_sys_path)
     _check("python imports (torch, transformers, datasets, accpre.*)",
                                             _check_python_imports)
+    _check(".pydeps packages resolve under .pydeps (not ~/.local)",
+                                            _check_pydeps_resolution)
     _check("accpre.collect.cli --help lists cnn_dm_300",
                                             _check_collect_cli_lists_cnn_dm_300)
     _check("train_sweep cell counts (144 frozen + 96 joint)",
